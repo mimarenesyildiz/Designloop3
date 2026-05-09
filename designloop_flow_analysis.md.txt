@@ -1,0 +1,612 @@
+# DesignLoop Tam Akış Simülasyonu — Prompt & JSON Analizi
+
+> **Senaryo**: 228 kişilik konferans salonu (render + plan yüklendi)  
+> **Mod**: Mock (API key yok — tüm yanıtlar yerel)  
+> **Render**: Bordo tiyatro koltukları, ahşap çıta tavan grid, spot aydınlatma, gri-nötr duvarlar, halı zemin  
+> **Plan**: SAHNE, Konferans Salonu (310.19 m²), Reji (8.42 m²), Ödeme Alanı (4.63 m²)
+
+---
+
+## AŞAMA 1 — Kurulum (Step 1)
+
+Kullanıcı render + plan yükledi. "Analiz Et" butonuna tıklandığında `handleAnalyze()` çağrılır.
+
+---
+
+## AŞAMA 2 — Analiz (Step 2): İki Paralel Prompt
+
+`analyzeUploadedImagesWithGemini()` **iki ayrı prompt'u paralel** olarak gönderir:
+
+### 2A. Metraj Prompt'u (`buildVisionAnalysisQuantityPrompt`)
+
+```
+Sen uzman bir Mimari Metraj (Surveyor) yapay zekasisin. 
+Gorevin, yuklenen kat plani ve render uzerinden KAT PLANINI referans 
+alarak, nesneleri saymak ve tahmini metraj (quantity takeoff) hesabi 
+yapmaktir. Kat planinin geometrisindeki tum tanimli alanlari, oturma 
+birimlerini (koltuk vb.) ve dekoratif elemanlari incele. Her 
+quantityTakeoff kalemi icin 0 ile 1 arasinda confidence alanini da 
+don. Confidence esikleri: 0.85+ yuksek, 0.5-0.85 arasi orta, alti 
+dusuk kabul edilir. Tasarimin degisebilir yuzeylerini (changeableItems) 
+ve saptanan yuzeyleri (detectedSurfaces) JSON icine ekle. Sadece JSON 
+don. Render sayisi: 1. Plan dosyasi: konferans_salonu_plan.png.
+
+{"changeableItems":[],"detectedSurfaces":[],"confidenceNote":"",
+"userReviewRecommendation":"","quantityTakeoff":[{"element":"","unit":"",
+"quantity":0,"note":"","confidence":0.82}],"recommendedScopeSelections":
+{"Tavan":true,"Zemin":false,"Duvar":true,"Sabit Mobilya":false,
+"Aydinlatma":true,"Dekoratif Ogeler":true}}
+```
+
+> [!WARNING]
+> **Prompt tarafında görsel de gönderilir** — Render + Plan görselleri `inlineData` olarak eklenir (base64).
+
+#### Beklenen Mock JSON Çıktısı (API yoksa yerel fallback):
+
+```json
+{
+  "summary": {
+    "changeableItems": [
+      "Duvar yüzeyleri", "Tavan katmanı", "Aydınlatma omurgası",
+      "Dekoratif arka plan", "Resepsiyon ön alanı"
+    ],
+    "detectedSurfaces": [
+      "Ahşap veya ahşap benzeri zemin", "Boya + panel kombinasyonu",
+      "Lineer tavan aksı", "Plan referansı: konferans_plan.png"
+    ],
+    "confidenceNote": "Mock analiz kullanıldı. Nihai keşif ve ölçümle doğrulama önerilir.",
+    "userReviewRecommendation": "Köşe birleşimleri, kolon çıkıntıları ve sabit mobilya adetleri kullanıcı tarafından kontrol edilmelidir.",
+    "analysisNotes": "1 render ile perspektif ve malzeme yoğunluğu çapraz okundu.",
+    "mode": "mock"
+  },
+  "quantityTakeoff": [
+    { "element": "Zemin", "unit": "m²", "quantity": 36, "note": "Plan konturu üzerinden tahmini alan.", "inScope": false, "confidence": 0.91 },
+    { "element": "Duvar", "unit": "m²", "quantity": 104, "note": "Render perspektifleriyle normalize edildi.", "inScope": true, "confidence": 0.88 },
+    { "element": "Tavan", "unit": "m²", "quantity": 36, "note": "Açık alan tavan izdüşümü.", "inScope": true, "confidence": 0.73 },
+    { "element": "Sabit Mobilya", "unit": "adet", "quantity": 4, "note": "Banko, niş ve sabit depolama elemanları.", "inScope": false, "confidence": 0.44 },
+    { "element": "Aydinlatma", "unit": "adet", "quantity": 8, "note": "Lineer ve odak aydınlatma karışımı.", "inScope": true, "confidence": 0.81 }
+  ],
+  "recommendedScopeSelections": {
+    "Tavan": true, "Zemin": false, "Duvar": true,
+    "Sabit Mobilya": false, "Aydinlatma": true, "Dekoratif Ogeler": true
+  }
+}
+```
+
+> [!CAUTION]
+> **Mock Verisinin Sorunları**:
+> - `baseArea = 32 + files.length * 4 = 36 m²` — gerçek plan 310 m² iken mock 36 m² diyor!
+> - "Resepsiyon ön alanı" gibi generic mock metni, konferans salonu konseptine uymaz
+> - Koltuk sayısı (228 adet) mock'ta hiç sayılmıyor — sabit mobilya 4 adet olarak varsayılan
+
+---
+
+### 2B. Estetik Kritik Prompt'u (`buildVisionAnalysisCritiquePrompt`)
+
+```
+Sen uzman bir Mimari Estetik ve Tasarim Elestirmeni (Design Critic) 
+yapay zekasisin. Gorevin, yuklenen plan ve render gorsellerinden 
+referans resme (render'a) cok daha fazla odaklanarak estetigi, isigi, 
+ergonomiyi ve malzeme dokusunu puanlamak. Yeni gruplanmis formatta su 
+kriterlere puan ver (1-10 arasi) ve her birine 1-2 cumle yorum yaz:
+- mekansalOrganizasyon: Zonlama, akis, giris sekansi, plan cozumunun netligi
+- ergonomiEsneklik: Kullanici konforu, oturma/ayakta kullanma, esneklik ve adaptasyon
+- isikPerformansi: Dogal ve yapay isik dengesi, atmosfer, derinlik
+- malzemeDoku: Malzeme uyumu, dokusal kontrast, yuzey kalitesi
+- gorselKompozisyon: Oran-oranti, hiyerarsi, odak noktasi, sahneleme
+- konseptUyumu: Genel karakter, mekan hikayesi, butunsel etki
+- uretilebilirlik: Cozumlerin buildable olmasi, standart uygulama ve detay cozum kolayligi
+- butceVerimliligi: Elde edilen etkiye gore butcenin ne kadar verimli kullanildigi
+Veri belirsizse bile render uzerinden tahmini ama gerekceli puan ver; bos birakma.
+Ayrica tasarimin gucluYonler (en az 2 madde) ve zayifYonler (en az 2 madde) listele.
+Bir genel yorum paragrafi yaz (genelDegerlendirme).
+Ayrica Hedef asamasinda kullanilacak secenek havuzlarini (briefOptionPools) da 
+proje baglamina gore oner. Sadece JSON don.
+Render sayisi: 1. Plan dosyasi: konferans_plan.png.
+
+{"briefOptionPools":{...},"designCritique":{...}}
+```
+
+#### Mock Critique JSON (yerel sabit veri):
+
+```json
+{
+  "designCritique": {
+    "skorlar": {
+      "planCozumu": { "puan": 6, "yorum": "Mekan organizasyonu temel islevleri karsiliyor ancak zonlama sematik kaliyor..." },
+      "esikDeneyimi": { "puan": 5, "yorum": "Giris sekansinda kullaniciyi hazirlayan bir gecis yok..." },
+      "isikKalitesi": { "puan": 7, "yorum": "Dogal isik kaynaklari iyi konumlanmis ancak yapay aydinlatma monoton..." },
+      "malzemeUyumu": { "puan": 6, "yorum": "Ahsap ve boya kombinasyonu guvenli bir secim..." },
+      "oranOranti": { "puan": 7, "yorum": "Tavan yuksekligi mekanin genisligine uygun..." },
+      "sirkulasyon": { "puan": 5, "yorum": "Ana hareket aksi belirgin degil..." },
+      "odakNoktasi": { "puan": 6, "yorum": "Arka plan duvar paneli odak olusturma potansiyeli tasiyor..." },
+      "ergonomi": { "puan": 7, "yorum": "Tezgah yukseklikleri ve oturma gruplari standartlara uygun..." },
+      "esneklik": { "puan": 4, "yorum": "Mekan tek bir senaryo icin kurgulanmis..." },
+      "butunselEtki": { "puan": 6, "yorum": "Mekan temiz ve duzenli bir izlenim birakiyor..." }
+    },
+    "gucluYonler": [
+      "Malzeme kalitesi ve isleme detaylari profesyonel seviyede",
+      "Mekansal oranlar dengeli ve kullanici konforuna uygun",
+      "Tavan-zemin iliskisi dogru kurulmus, basici hissettirmiyor"
+    ],
+    "zayifYonler": [
+      "Sirkulasyon akisi belirsiz, kullaniciyi yonlendiren mimari ipuclari yetersiz",
+      "Isik katmanlari arasinda dramatik fark yok, mekan flat gorunuyor",
+      "Konsept butunlugu zayif"
+    ],
+    "genelDegerlendirme": "Mekan teknik acisindan yetkin bir calisma..."
+  }
+}
+```
+
+> [!CAUTION]
+> **Kritik Sorunlar**:
+> 1. Mock critique'teki **skor alanları API ve mock arasında uyumsuz**: API `mekansalOrganizasyon` beklerken mock `planCozumu` döndürüyor
+> 2. Critique tamamen **jenerik** — konferans salonu, sahne, koltuk sırası gibi proje-spesifik hiçbir tespit yok
+> 3. `briefOptionPools` mock'ta dosya ismine göre heuristik üretiyor — plan adında "ofis/merkez/resepsiyon" arıyor, "konferans" anahtar kelimesi kontrol edilmiyor
+
+---
+
+## AŞAMA 3 — Hedef Brief (Step 3): Birleşik Prompt Oluşturma
+
+Kullanıcı brief seçeneklerini işaretler. Varsayılan (initial state) değerlerle `buildUnifiedDesignPrompt()`:
+
+### Unified Design Prompt (Varsayılan State ile):
+
+```
+Tasarim yaklasimi: Kontrollu Yenileme.
+Mekanin oncelikli problemi: Fazla Sade / Karaktersiz.
+Renk paleti: Sicak Notr.
+Atmosfer hedefi: Referans gorseldeki mevcut mimari dili bozmadan kontrollu bir iyilestirme.
+Degisecekler: Duvar, Tavan, Aydinlatma.
+Butce hedefi: Standart.
+Mudahale seviyesi hedefi: Kontrollu.
+Alternatif adedi hedefi: 4.
+Uygulanabilirlik onceligi: Yuksek.
+```
+
+> [!NOTE]
+> Bu prompt, alternatif üretim pipeline'ına ve visual prompt'a birçok yerde gömülür — yani **merkezi bir sinir sistemi** gibi çalışır.
+
+---
+
+## AŞAMA 4 — Alternatif Üretimi (Step 4): 3 Ajanlı Pipeline
+
+`handleGenerateAlternatives()` → `generateDesignAlternativesWithAI()` çağrılır.
+
+API yoksa → `generateDesignAlternativesLocallyFromPipeline()` çalışır (3 yerel ajan):
+
+### 4A. Konsept Ajanı Prompt'u (`buildConceptGenerationPrompt`)
+
+```
+Bir ic mimari konsept ajani olarak calis.
+Yuklenen render ve planlari oku, sadece alternatiflerin ana fikrini ve 
+hikayesini kur. Teknik cozumleme, dnaDecisions, malzeme listesi veya 
+render promptu yazma.
+
+Birlesik brief: Tasarim yaklasimi: Kontrollu Yenileme. Mekanin oncelikli
+problemi: Fazla Sade / Karaktersiz. Renk paleti: Sicak Notr. Atmosfer 
+hedefi: Referans gorseldeki mevcut mimari dili bozmadan kontrollu bir 
+iyilestirme. Degisecekler: Duvar, Tavan, Aydinlatma. Butce hedefi: 
+Standart. Mudahale seviyesi hedefi: Kontrollu. Alternatif adedi hedefi: 4.
+Uygulanabilirlik onceligi: Yuksek.
+
+Kullanici promptu: [Unified prompt tekrar]
+Kapsamdaki elemanlar: ["Duvar","Tavan","Aydinlatma"].
+Butce: Standart. Mudahale: Kontrollu. Alternatif hedefi: 4.
+Sadece JSON don.
+
+Beklenen JSON: {"conceptAlternatives":[{"id":"A1","title":"","concept":"",
+"reasonWhy":"","differenceSummary":"","budgetPosture":"","statusLabel":""}]}
+
+4 alternatif uret.
+Alternatifler birbirinden anlamli bicimde ayrissin; sadece baslik degistirme.
+Konsept en fazla 2 cumle, differenceSummary tek cümle olsun.
+```
+
+#### Mock Concept JSON (4 yerel alternatif):
+
+```json
+{
+  "conceptAlternatives": [
+    {
+      "id": "A1",
+      "title": "Sakin Yenileme",
+      "concept": "Tavanda mevcut ahşap çıta ritmini bozmadan, duvar panellerini daha sıcak tonlarla güncelleyen kontrollu bir yenileme.",
+      "reasonWhy": "Bu varyasyon Duvar, Tavan uzerinde yogunlasir. Iyilestirme odagi agirlikli tutuldu.",
+      "differenceSummary": "Kontrollu ses ve minimal malzeme degisikligi.",
+      "budgetPosture": "Standart",
+      "statusLabel": "Onerilen baslangic alternatifi"
+    },
+    {
+      "id": "A2",
+      "title": "Hafif Kontrastlı",
+      "concept": "Mevcut koyu-sıcak ahşap ifadeyi koruyarak aydınlatmada daha modern bir katman ekler.",
+      "reasonWhy": "Bu varyasyon Duvar, Tavan uzerinde yogunlasir.",
+      "differenceSummary": "Aydinlatma yeniligi ön planda.",
+      "budgetPosture": "Standart",
+      "statusLabel": "Taslak"
+    },
+    {
+      "id": "A3",
+      "title": "Yumusak Geçiş",
+      "concept": "Duvar yuzeylerinde doku degisikligi ile mekanı daha karakterli kilar; tavan ve zemin korunur.",
+      "reasonWhy": "Bu varyasyon Duvar, Tavan uzerinde yogunlasir.",
+      "differenceSummary": "Duvar malzemesi degisikligi ağırlıklı.",
+      "budgetPosture": "Standart",
+      "statusLabel": "Taslak"
+    },
+    {
+      "id": "A4",
+      "title": "Akustik Odaklı",
+      "concept": "Tavan ve duvar paneliLerinde akustik performansı öne çıkaran bir dokunuş.",
+      "reasonWhy": "Bu varyasyon Duvar, Tavan uzerinde yogunlasir.",
+      "differenceSummary": "Akustik panel eklentileri ile ses kalitesi odaklı.",
+      "budgetPosture": "Standart",
+      "statusLabel": "Taslak"
+    }
+  ]
+}
+```
+
+---
+
+### 4B. DNA Ajanı Prompt'u (`buildDNAResolutionPrompt`)
+
+```
+Bir ic mimari malzeme ve DNA ajani olarak calis.
+Konsept alternatiflerini al ve sadece teknik karar setlerini cozumle.
+Her alternatif icin malzemeler, renk kimligi, onerilen palet, 
+changedItems ve dnaDecisions don.
+Yeni konsept yazma; mevcut konseptlerin teknik acilimini yap.
+
+Birlesik brief: [Unified prompt]
+Konsept alternatifleri: [A1-A4 JSON]
+Metraj verisi: [Kapsam dahili elemanlar]
+Kapsam secimleri: {"Tavan":true,"Duvar":true,"Aydinlatma":true,"Dekoratif Ogeler":true}
+DNA kilitleri: [{"element":"Zemin","action":"preserve","formDNA":"koru",
+"materialDNA":"koru","colorDNA":"koru"},
+{"element":"Duvar","action":"improve","formDNA":"koru","materialDNA":"koru",
+"colorDNA":"koru"}, ...]
+Sadece JSON don.
+
+Beklenen JSON: {"resolvedAlternatives":[{"id":"A1","changedItems":[],
+"preservedItems":[],"materials":[{"name":"","quantity":0}],"colorDNA":"",
+"suggestedColors":[{"role":"","hex":"","name":""}],"budgetImpact":"",
+"statusLabel":"","dnaDecisions":[{"element":"","reason":"",
+"formOptions":["",""],"materialOptions":["",""],
+"colorOptions":[{"label":"","hexes":["#E8DED1","#C9B59A","#6E6052"]}]}]}]}
+
+Her alternatifte dnaDecisions listesi tam olarak 3 eleman donsun ve 
+her entry kapsamdaki elemanlardan biriyle birebir eslessin.
+Malzemeler buildable ve ic mekan odakli olsun; renkler gercekci hex 
+kodlariyla donsun.
+```
+
+#### Mock DNA Resolution (yerel oluşturulmuş):
+
+```json
+{
+  "resolvedAlternatives": [
+    {
+      "id": "A1",
+      "changedItems": ["Duvar", "Tavan", "Aydinlatma"],
+      "preservedItems": [],
+      "materials": [
+        { "name": "Mikrosement kaplama", "quantity": 104 },
+        { "name": "Akustik alci panel", "quantity": 36 },
+        { "name": "Lake sabit mobilya", "quantity": 4 },
+        { "name": "Lineer LED armatür", "quantity": 8 }
+      ],
+      "colorDNA": "Sıcak nötr tabanında kontrollü ahşap ve taş geçişi",
+      "suggestedColors": [
+        { "role": "Taban", "hex": "#F1EDE6", "name": "Kum Beyazı" },
+        { "role": "Vurgu", "hex": "#C9B59A", "name": "Sicak Bej" },
+        { "role": "Derinlik", "hex": "#6E6052", "name": "Toprak Kahve" }
+      ],
+      "budgetImpact": "Standart",
+      "dnaDecisions": [
+        {
+          "element": "Duvar",
+          "reason": "Mevcut boya yüzeyini koruyarak panel eklentisiyle karakter kazandır",
+          "formOptions": ["Düz panel", "Dikey çıtalı panel"],
+          "materialOptions": ["Yari mat duvar boyasi", "Ahsap dokulu duvar paneli"],
+          "colorOptions": [{ "label": "Sicak Notr", "hexes": ["#F1EDE6", "#D4CDC4", "#6E6052"] }]
+        },
+        {
+          "element": "Tavan",
+          "reason": "Mevcut ahşap grid ritmini bozmadan akustik katman ekle",
+          "formOptions": ["Kaset tavan", "Lamel tavan"],
+          "materialOptions": ["Akustik Alcipan Panel", "Mikro Delikli Akustik Panel"],
+          "colorOptions": [{ "label": "Notr Tavan", "hexes": ["#E8E4DD", "#D4CDC4"] }]
+        },
+        {
+          "element": "Aydinlatma",
+          "reason": "Spot dizilimini koruyarak lineer LED ile destekle",
+          "formOptions": ["Gomulebilir profil", "Sarkıt lineer"],
+          "materialOptions": ["Lineer LED armatür", "Alüminyum gömme profil"],
+          "colorOptions": [{ "label": "Sıcak Beyaz", "hexes": ["#FFF5E6", "#F5EDE0"] }]
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+### 4C. Prompt Composer Ajanı (`buildPromptComposerPrompt`)
+
+```
+Bir ic mimari prompt composer ajani olarak calis.
+Alternatifleri gorsel modelin anlayacagi kontrollu metinsel tasarim 
+promptlarina cevir.
+Her alternatif icin designIntentPrompt ve renderPrompt don.
+Yeni tasarim karari ekleme; sadece mevcut alternatif kararlarini netlestir.
+
+Birlesik brief: [Unified prompt]
+Referans render: konferans_salonu_render.png
+Cozumlenmis alternatifler: [Resolved A1-A4 JSON]
+Sadece JSON don.
+Beklenen JSON: {"renderPackage":[{"id":"A1","designIntentPrompt":"",
+"renderPrompt":""}]}
+designIntentPrompt Turkce olabilir; renderPrompt gorsel model icin 
+daha teknik ve acik yazilsin.
+```
+
+#### Mock Render Package (lokal):
+
+```json
+{
+  "renderPackage": [
+    {
+      "id": "A1",
+      "designIntentPrompt": "Mevcut ahşap çıta tavan ritmini koruyarak, duvar panellerinde sıcak nötr ton geçişi ve aydınlatmada lineer LED desteği ekle. Koltuklara dokunma.",
+      "renderPrompt": "Referans renderdaki bakis acisini ve geometriyi koru. Duvar, Tavan, Aydinlatma uzerinde kontrollu varyasyon uygula. Malzeme yonu: Mikrosement kaplama, Akustik alci panel, Lake sabit mobilya, Lineer LED armatür. Renk DNA: Sıcak nötr tabanında kontrollü ahşap ve taş geçişi."
+    }
+  ]
+}
+```
+
+---
+
+## AŞAMA 5 — Görsel Üretim (Step 5): Visual Prompt
+
+`handleGenerateVisuals()` her alternatif için iki adım çalıştırır:
+
+### 5A. Visual Prompt Oluşturma (`buildVisualPromptGenerationPrompt`)
+
+API modunda LLM'e gönderilen prompt:
+
+```
+Bir interior visualization prompt optimizer olarak calis.
+Amacin, yuklenen referans gorsel uzerinde sadece izin verilen kisitli 
+degisiklikleri yapan, cok kontrollu bir image-edit promptu yazmak.
+
+Birlesik tasarim hedefi: [Unified prompt].
+Alternatif basligi: Sakin Yenileme.
+Konsept: Tavanda mevcut ahşap çıta ritmini bozmadan, duvar panellerinde 
+daha sıcak tonlarla güncelleyen kontrollu bir yenileme.
+Metinsel tasarim promptu: [designIntentPrompt].
+Malzemeler: Mikrosement kaplama, Akustik alci panel, Lake sabit mobilya, 
+Lineer LED armatür.
+Renk DNA: Sıcak nötr tabanında kontrollü ahşap ve taş geçişi.
+Onerilen renkler: Taban #F1EDE6, Vurgu #C9B59A, Derinlik #6E6052.
+Ana kanvas secimleri: [Alternative decision choices summary].
+DNA kilitleri: [quantity takeoff DNA locks JSON].
+Referans render: konferans_salonu_render.png.
+Mudahale seviyesi: Kontrollu. Kontrollu seviyesinde odaklan
+Butce yonu: Standart. Standart ama zayif gorunmeyen, kurumsal ve 
+dengeli malzeme secimleri yap.
+Geometri koruma: evet.
+Revizyon notu: yok.
+Cevap olarak sadece prompt metnini don.
+```
+
+---
+
+### 5B. Mock Fallback: Hardcoded Visual Prompt (`buildControlledVisualPrompt`)
+
+API yokken çalışan yerel prompt builder:
+
+```
+Use the uploaded image as the exact base image. Keep the same camera 
+angle, framing, perspective, room dimensions, architecture, columns, 
+walls, niches, planters, TV screens, doors, flooring, table layout, 
+lighting logic, and overall cafeteria composition exactly the same. 
+Do not redesign the space. The existing wooden ceiling strips must 
+remain exactly unchanged in position, spacing, rhythm, direction, 
+width, thickness, color, and proportion.
+
+Only redesign these elements: Duvar, Tavan, Aydinlatma.
+Everything else must remain unchanged: all remaining architecture and furniture.
+Design intent: [concept]
+Text design prompt: [designIntentPrompt].
+Structured prompt: [Unified prompt]
+Intervention level: Kontrollu. Keep the design yalın and tightly scoped 
+with barely visible tweaks.
+Budget direction: Standart. Keep the material expression practical.
+Material direction for the redesign: Mikrosement kaplama, Akustik alci panel, 
+Lake sabit mobilya, Lineer LED armatür.
+Color DNA: Sıcak nötr tabanında kontrollü ahşap ve taş geçişi. 
+Suggested palette: Taban #F1EDE6, Vurgu #C9B59A, Derinlik #6E6052.
+Preserve these DNA locks wherever specified: [locks].
+Alternative UI selections: [decision choices].
+Generate a controlled architectural renovation edit, not a brand-new concept image.
+No new decorative objects, no new walls, no new furniture layout, no crop 
+change, no viewpoint change.
+Reference render name: konferans_salonu_render.png.
+Photorealistic, realistic materials, buildable cafeteria solution.
+```
+
+> [!CAUTION]
+> **"cafeteria"** kelimesi hardcoded! Konferans salonu projesinde "buildable cafeteria solution" yazıyor. Bu ciddi bir bağlam kirliliği.
+
+---
+
+## AŞAMA 6 — Rapor (Step 7): Executive Summary Prompt
+
+```
+As a concise interior architecture report writer, draft a polished 
+Turkish executive summary in 2 short paragraphs. Use a professional 
+client-facing tone. Match this report mode: Yonetici Sunumu.
+Summarize chosen direction, reference render, atmosphere, palette 
+decisions, and budget posture.
+
+Project: DesignLoop Demo / Interior Design Study
+Reference render: konferans_salonu_render.png
+Selected design: Sakin Yenileme
+Structured prompt: [Unified prompt]
+Alternatives: [JSON array of title, budget, concept, reason fields]
+```
+
+---
+
+# 📊 PROMPT KALİTESİ DEĞERLENDİRMESİ
+
+## Güçlü Yanlar
+
+| # | Nokta | Açıklama |
+|---|-------|----------|
+| 1 | **Multi-agent pipeline** | Konsept → DNA → Prompt Composer ayrımı iyi bir mimari karar |
+| 2 | **DNA kilitleri** | form/material/color DNA'sı granüler kontrol sağlıyor |
+| 3 | **Confidence gating** | Vision yanıtlarında 0-1 güven skoru ile otomatik kapsam dışı bırakma |
+| 4 | **Unified prompt merkezi** | Tek bir `buildUnifiedDesignPrompt()` ile tüm downstream'e tutarlılık |
+| 5 | **JSON schema örnekleri** | Her prompt'un sonunda beklenen JSON şeması var |
+
+## 🔴 Kritik Sorunlar ve İyileştirme Önerileri
+
+### 1. Hardcoded "cafeteria" ve Jenerik Referanslar
+
+**Sorun**: `buildControlledVisualPrompt()` içinde:
+- `"cafeteria composition"` → hardcoded
+- `"table layout"` → konferans salonunda masa düzeni yok, koltuk sırası var
+- `"planters, TV screens"` → konferansta saksı/TV olmayabilir
+
+**Çözüm**: Mekan tipi bilgisini vision analizinden çıkart ve prompt'ta dinamik kullan:
+```js
+const spaceType = appState.analysisSummary?.spaceType || "interior space";
+// "cafeteria" yerine "${spaceType}" kullan
+```
+
+### 2. Mock Verinin Proje-Agnostik Olması
+
+**Sorun**: Mock analiz her zaman aynı 5 metraj kalemini döndürür:
+- Konferans salonu için "Resepsiyon ön alanı" anlamsız
+- 228 koltuk saymak yerine "Sabit Mobilya: 4 adet" diyor
+- `baseArea = 32 + files.length * 4` formülü 310 m²'lik salonu 36 m² yapıyor
+
+**Çözüm**: Mock verisini en azından plan dosya adından (regex ile "konferans", "ofis", "lobi" gibi) bağlam-duyarlı hale getir.
+
+### 3. Critique Skoru ve API Şeması Uyumsuzluğu
+
+**Sorun**: 
+- Mock: `planCozumu`, `esikDeneyimi`, `isikKalitesi`, `oranOranti`, `sirkulasyon`, `odakNoktasi`, `ergonomi`, `esneklik`, `butunselEtki`
+- API: `mekansalOrganizasyon`, `ergonomiEsneklik`, `isikPerformansi`, `malzemeDoku`, `gorselKompozisyon`, `konseptUyumu`, `uretilebilirlik`, `butceVerimliligi`
+
+Mock ve API tamamen farklı skor setleri kullanıyor! UI render edip "designCritique.skorlar" okurken alan eşleşmezse boş veri gösterir.
+
+**Çözüm**: Mock veriyi API ile aynı şemaya getir veya UI'da her iki şemayı da kontrol et.
+
+### 4. Prompt'larda Dil Tutarsızlığı
+
+**Sorun**: 
+- Vision ve alternative promptları **Türkçe** 
+- Visual prompt **İngilizce**
+- Executive summary promptu **İngilizce** ama Türkçe çıktı bekliyor
+
+Bu, LLM'in bazen İngilizce, bazen Türkçe yanıt vermesine neden olabilir.
+
+**Çözüm**: Visual prompt'un giriş directive'ini de Türkçe yap veya açıkça "Write the prompt **in English** for the image model" de.
+
+### 5. Prompt Uzunluğu ve Token Verimliliği
+
+**Sorun**: `buildAlternativeGenerationPrompt` tek seferde ~800+ token'lık instruction gönderiyor:
+- JSON şema örneği (büyük)
+- quantityData (tam JSON dump)
+- scopeSelections (tam JSON dump)
+- DNA locks (tam JSON dump)
+- + birçok tekrarlayan instruction
+
+**Çözüm**: 
+- JSON şemalarını system prompt'a taşı
+- Sadece "delta" veriyi gönder (tüm quantity datasını değil, sadece in-scope olanları)
+- DNA locks'u özet string'e dönüştür: `"Duvar: improve/koru/koru/koru | Tavan: improve/esnet/esnet/esnet"`
+
+### 6. Image Prompt'ta Geometri Koruma Çelişkisi
+
+**Sorun**: Prompt "Keep everything unchanged" diyor ama aynı zamanda "redesign these elements" diyor. Image model'ler bu çelişkiyi kötü parse edebilir.
+
+**Çözüm**: Prompt'u 3 net bölüme ayır:
+1. **PRESERVE** (değişmeyecekler — liste)
+2. **MODIFY** (değişecekler — detaylı)
+3. **STYLE** (genel ton/atmosfer)
+
+### 7. `renderPrompt` vs `visualPrompt` vs `designIntentPrompt` Karışıklığı
+
+**Sorun**: 3 farklı "prompt" alanı var ama hangisinin nerede kullanıldığı belirsiz:
+- `designIntentPrompt`: Türkçe, kullanıcıya görünür
+- `renderPrompt`: Pipeline'dan gelir, `visualPrompt` olarak saklanır
+- `visualPrompt`: Hem pipeline'dan hem fallback'ten gelebilir
+
+Image üretiminde bazen `visualPrompt` kullanılırken bazen `buildControlledVisualPrompt()` çağrılıyor.
+
+**Çözüm**: Tek bir `renderReadyPrompt` alanı kullan, pipeline'ın son ürünü her zaman bu olsun.
+
+### 8. briefOptionPools Heuristiğinin Zayıflığı
+
+**Sorun**: `buildMockBriefOptionPools` sadece `planName`'de "ofis/merkez/resepsiyon" arıyor:
+```js
+const planSuggestsCorporate = /ofis|genel|merkez|resepsiyon/.test(planName);
+```
+"konferans" kelimesi hiç kontrol edilmiyor → yanlış seçenekler sunulur.
+
+**Çözüm**: Regex'e konferans salonu tiplerini ekle:
+```js
+const planSuggestsCorporate = /ofis|genel|merkez|resepsiyon|konferans|salon|toplanti/.test(planName);
+```
+Ve mekan tipine göre farklı option pool'ları sun (konferans → akustik odaklı seçenekler ağırlıklı).
+
+---
+
+# 🗺️ Prompt Akış Haritası
+
+```mermaid
+flowchart TD
+    A[Render + Plan Yükleme] --> B{API Key var mı?}
+    B -->|Evet| C[Gemini Vision]
+    B -->|Hayır| D[Mock Analiz]
+    C --> E[2 Paralel Prompt]
+    E --> E1[Metraj Prompt<br/>buildVisionAnalysisQuantityPrompt]
+    E --> E2[Critique Prompt<br/>buildVisionAnalysisCritiquePrompt]
+    E1 --> F[quantityTakeoff JSON]
+    E2 --> G[designCritique + briefOptionPools JSON]
+    D --> F
+    D --> G
+    
+    F --> H[Kullanıcı Metraj Düzenler]
+    G --> I[Kullanıcı Brief Seçer]
+    H --> J[buildUnifiedDesignPrompt]
+    I --> J
+    
+    J --> K{API Key?}
+    K -->|Evet| L[3-Agent Pipeline]
+    K -->|Hayır| M[3-Agent Lokal]
+    
+    L --> L1["①Konsept Ajanı<br/>buildConceptGenerationPrompt"]
+    L1 --> L2["②DNA Ajanı<br/>buildDNAResolutionPrompt"]
+    L2 --> L3["③Prompt Composer<br/>buildPromptComposerPrompt"]
+    L3 --> N[Merged Alternatives]
+    M --> N
+    
+    N --> O[Visual Prompt]
+    O --> O1{API Key?}
+    O1 -->|Evet| P1[buildVisualPromptGenerationPrompt]
+    O1 -->|Hayır| P2[buildControlledVisualPrompt]
+    P1 --> Q[Image Generation]
+    P2 --> Q
+    Q --> R[Step 5: Render Panelleri]
+    
+    R --> S[Executive Summary Prompt]
+    S --> T[Rapor PDF Export]
+```

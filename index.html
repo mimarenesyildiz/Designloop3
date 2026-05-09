@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DesignLoop Prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="db.js"></script>
+  <script defer src="cost-database.js"></script>
+  <script defer src="material-engine.js"></script>
+  <script defer src="script.js"></script>
+</head>
+
+<body class="mimarenes-inspired-theme">
+  <div class="app-shell">
+    <header class="top-header dark-command-bar">
+      <div class="header-band">
+        <div class="header-utility-row">
+          <div class="header-left-stack">
+            <div class="brand-block">
+              <p class="eyebrow">AI Iterative Design Costing Prototype</p>
+              <h1>DesignLoop</h1>
+              <div class="brand-mode-row">
+                <span class="meta-pill">Vanilla SPA Demo</span>
+                <span class="meta-pill" id="ai-status-pill">AI Gerekli</span>
+              </div>
+            </div>
+            <div class="header-meta">
+              <div id="project-summary" class="project-summary-slot"></div>
+            </div>
+          </div>
+          <div class="header-right-stack">
+            <div class="header-context-row">
+              <button id="header-reference-preview" type="button" class="header-reference-preview"></button>
+            </div>
+          </div>
+        </div>
+        <div class="header-nav-row">
+          <div id="header-step-action-left" class="header-step-action-slot"></div>
+          <div class="header-nav-shell">
+            <nav id="top-nav" class="top-nav" aria-label="Ana navigasyon"></nav>
+            <div class="settings-menu-wrapper" id="settings-menu-wrapper">
+              <button type="button" class="nav-button utility" id="settings-gear-button" title="Ayarlar"
+                aria-label="Ayarlar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="3" />
+                  <path
+                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
+              </button>
+              <div id="settings-dropdown" class="settings-dropdown hidden">
+                <button type="button" class="settings-item" data-settings-action="project-settings">Proje Ayarlari</button>
+                <button type="button" class="settings-item" data-settings-action="cost-database">Maliyet
+                  Veritabani</button>
+                <button type="button" class="settings-item" data-settings-action="ai-settings">AI Ayarlari</button>
+              </div>
+            </div>
+          </div>
+          <div id="header-step-action-right" class="header-step-action-slot"></div>
+        </div>
+      </div>
+    </header>
+
+    <nav id="app-breadcrumb" class="app-breadcrumb" aria-label="Konum"></nav>
+
+    <div id="alert-region" class="alert-region" aria-live="polite"></div>
+
+    <main class="main-content">
+      <section id="dashboard" class="step-section active">
+        <div class="section-heading" id="dashboard-heading">
+          <div>
+            <p class="section-kicker" id="dashboard-kicker">Panel</p>
+            <h2 id="dashboard-title">Projelerim</h2>
+          </div>
+          <button id="dashboard-action-button" type="button" class="primary-button">Yeni Proje</button>
+        </div>
+
+        <div id="dashboard-toolbar" class="dashboard-toolbar">
+          <label class="dashboard-search-shell" for="dashboard-search-input">
+            <span>Ara</span>
+            <input id="dashboard-search-input" type="search" class="text-input" placeholder="Proje veya mahal ara">
+          </label>
+          <label class="dashboard-filter-shell" for="dashboard-status-filter">
+            <span>Durum</span>
+            <select id="dashboard-status-filter" class="text-input">
+              <option value="all">Tum durumlar</option>
+              <option value="active">Aktif</option>
+              <option value="archived">Arsiv</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="dashboard-grid" class="projects-grid">
+          <!-- Dinamik içerik buraya gelecek: Proje veya Mahal kartları -->
+        </div>
+      </section>
+
+      <section id="step-1" class="step-section">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Step 1</p>
+            <h2>Kurulum</h2>
+          </div>
+          <p class="section-copy">Birden fazla render ve tek bir kat plani yukleyerek analiz akisina baslayin. Sistem
+            AI ile metraj ve kapsam onerisi uretecek.</p>
+        </div>
+
+        <div class="setup-grid upload-board-grid">
+          <article class="panel upload-board-panel upload-media-panel">
+            <div class="panel-header">
+              <div>
+                <div class="upload-step-label"><span class="upload-step-num">①</span><h3>Kat Plani</h3><span class="upload-step-badge">Zorunlu</span></div>
+                <p>Tek bir plan dosyasi kullanilir. Gorsel veya PDF olabilir.</p>
+              </div>
+              <button type="button" class="ghost-button" data-trigger-input="plan-input">Plan Sec</button>
+            </div>
+
+            <div id="plan-dropzone" class="dropzone compact" tabindex="0" aria-label="Plan yukleme alani">
+              <input id="plan-input" type="file" accept="image/*,.pdf" hidden>
+              <div class="dropzone-inner">
+                <span class="dropzone-icon">□</span>
+                <strong>Kat planini birakin</strong>
+                <p>tek dosya kabul edilir</p>
+              </div>
+            </div>
+
+            <div id="plan-preview-list" class="preview-grid single"></div>
+          </article>
+
+          <article class="panel upload-board-panel upload-media-panel">
+            <div class="panel-header">
+              <div>
+                <div class="upload-step-label"><span class="upload-step-num">②</span><h3>Render Yukleme</h3><span class="upload-step-badge is-optional">En az 1</span></div>
+                <p>Birden cok perspektif desteklenir. Ic mekan acilari onerilir.</p>
+              </div>
+              <button type="button" class="ghost-button" data-trigger-input="render-input">Dosya Sec</button>
+            </div>
+
+            <div id="render-dropzone" class="dropzone" tabindex="0" aria-label="Render yukleme alani">
+              <input id="render-input" type="file" accept="image/*" multiple hidden>
+              <div class="dropzone-inner">
+                <span class="dropzone-icon">+</span>
+                <strong>Render dosyalarini surukleyin</strong>
+                <p>veya tiklayarak secin</p>
+              </div>
+            </div>
+
+            <div id="render-preview-list" class="preview-grid"></div>
+          </article>
+
+        </div>
+
+        <div class="setup-footer-strip">
+          <p class="micro-copy">Analiz oncesi en az 1 render ve 1 plan yuklenmelidir.</p>
+          <div class="setup-footer-actions">
+            <button id="restart-workflow-button" type="button" class="ghost-button">Sifirdan Basla</button>
+            <button id="restart-post-materialid-button" type="button" class="ghost-button">MaterialID Sonrasini Test
+              Et</button>
+            <button id="analyze-button" type="button" class="primary-button">Analiz Et</button>
+          </div>
+        </div>
+
+      </section>
+
+      <section id="step-2" class="step-section">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Analiz</p>
+            <h2>Analiz</h2>
+          </div>
+          <p class="section-copy">Tasarim degerlendirmesini inceleyin, hub bazinda detayli analiz yapin ve
+            alternatifleri uretin.</p>
+        </div>
+
+        <!-- Collapsible Metraj Panel -->
+        <article id="kurulum-metraj-panel" class="collapsible-panel" data-collapsed="true">
+          <button type="button" class="collapsible-toggle" id="kurulum-metraj-toggle">
+            <div>
+              <h3>Duzenlenebilir Metraj ve Kapsam</h3>
+              <p>AI onerilerini satir bazinda duzenleyin, yeni kalem ekleyin ve hangi kalemlerin revize edilecegini ayni
+                tabloda yonetin.</p>
+            </div>
+            <span class="collapsible-arrow">&#9654;</span>
+          </button>
+          <div class="collapsible-body">
+            <div class="collapsible-body-tools">
+              <button id="add-quantity-row-button" type="button" class="ghost-button">+ Kalem Ekle</button>
+            </div>
+            <div id="quantity-takeoff-summary" class="takeoff-summary"></div>
+            <div id="quantity-card-grid" class="takeoff-card-grid"></div>
+            <div class="table-wrapper" style="display:none;">
+              <table class="data-table">
+                <tbody id="quantity-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel span-2">
+          <div class="panel-header">
+            <div>
+              <h3>Tasarim Degerlendirmesi</h3>
+              <p>Yuklenen renderlar uzerinden mimari kritik ve mekan analizi.</p>
+            </div>
+            <div id="analysis-confidence-strip" class="analysis-confidence-strip"></div>
+          </div>
+          <div id="analysis-summary" class="summary-grid"></div>
+        </article>
+
+        <!-- Hub Pill Navigation -->
+        <nav id="analiz-hub-nav" class="analiz-hub-nav"></nav>
+
+        <!-- Active Hub Content Area -->
+        <div id="analiz-hub-content" class="analiz-hub-content">
+          <div class="hub-shell unified-hub-shell" id="unified-hub-shell" style="display:none" data-hub-layout="split">
+            <div class="hub-canvas-area">
+              <div class="hub-canvas-toolbar">
+                <div class="hub-canvas-toolbar-actions">
+                  <button type="button" class="ghost-button small-button" id="hub-viewer-split-toggle-unified" aria-pressed="false">Split</button>
+                </div>
+              </div>
+              <div class="hub-canvas-container" id="hub-canvas-container-unified">
+                <div class="hub-canvas-stage" id="hub-canvas-stage-unified">
+                  <img class="hub-reference-image" id="hub-ref-image-unified" alt="Referans" />
+                  <canvas class="hub-segmentation-overlay" id="hub-seg-overlay-unified"></canvas>
+                  <div class="hub-split-divider" id="hub-split-divider-unified" aria-hidden="true">
+                    <span class="hub-split-divider-line"></span>
+                    <button type="button" class="hub-split-divider-handle" id="hub-split-handle-unified"
+                      aria-label="Split ayiriciyi surukle">
+                      <span></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="hub-selection-info" id="hub-selection-info-unified">
+                <span class="hub-selection-label">Bolge secin</span>
+              </div>
+              <div class="hub-inline-detail" id="hub-inline-detail-unified">
+                <div class="hub-panel-placeholder">
+                  <p>Bir hub sectiginizde detay alani burada acilir.</p>
+                </div>
+              </div>
+            </div>
+            <div class="hub-panel-area" id="hub-panel-unified">
+              <div class="hub-panel-placeholder">
+                <p>Bir hub secin.</p>
+              </div>
+            </div>
+          </div>
+          <div id="hub-original-peek-stash" class="hidden" aria-hidden="true">
+            <button
+              type="button"
+              class="hub-original-peek-button"
+              id="hub-original-peek-unified"
+              aria-label="Basili tutarak orijinal renderi gor"
+              title="Basili tutarak orijinali gor"
+              hidden
+            >
+              Orijinali gor
+            </button>
+          </div>
+        </div>
+
+        <div class="section-actions">
+          <button id="analiz-generate-alternatives" type="button" class="primary-button">Alternatifleri Uret</button>
+        </div>
+      </section>
+
+      <section id="step-3" class="step-section">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Step 3</p>
+            <h2>Tasarim Briefi</h2>
+          </div>
+          <p class="section-copy">Uretim ve degerlendirme modullerinden gelen karar havuzlarini burada sentezleyin,
+            alternatif briefini olusturun ve uretime gonderin.</p>
+        </div>
+
+        <div class="analysis-grid">
+          <article id="step3-brief-panel" class="panel span-2">
+            <div class="panel-header">
+              <div>
+                <h3>Tasarim Briefi</h3>
+                <p>Renk, malzeme, isik ve degerlendirme notlarini bir araya getirip alternatif uretimine gidecek brief'i
+                  burada netlestirin.</p>
+              </div>
+            </div>
+
+            <div id="design-synthesis-pools" class="resource-pool-panel"></div>
+
+            <div class="guided-brief-grid">
+              <div>
+                <label class="field-label" for="design-direction-select">Tasarim Yaklasimi</label>
+                <div id="design-direction-select" class="multi-choice-group" data-prompt-field="designDirection">
+                  <button type="button" class="choice-chip" data-prompt-field="designDirection"
+                    data-prompt-option="controlled-refresh">Kontrollu Yenileme</button>
+                  <button type="button" class="choice-chip" data-prompt-field="designDirection"
+                    data-prompt-option="premium-refresh">Premium Yorum</button>
+                  <button type="button" class="choice-chip" data-prompt-field="designDirection"
+                    data-prompt-option="contemporary-refresh">Daha Cagdas Yorum</button>
+                  <button type="button" class="choice-chip" data-prompt-field="designDirection"
+                    data-prompt-option="acoustic-improvement">Akustik Odakli Iyilestirme</button>
+                  <button type="button" class="choice-chip" data-prompt-field="designDirection"
+                    data-prompt-option="warm-modernization">Daha Sicak ve Davetkar</button>
+                  <button type="button" class="choice-chip" data-prompt-field="designDirection"
+                    data-prompt-option="custom">Ozel</button>
+                </div>
+                <input id="design-direction-custom" type="text" class="text-input conditional-input hidden"
+                  placeholder="Ozel tasarim yaklasimi">
+                <span id="design-direction-ai-chip" class="badge info hidden"></span>
+                <p id="design-direction-help" class="micro-copy selection-help"></p>
+              </div>
+              <div>
+                <label class="field-label" for="spatial-problem-select">Mekanin Oncelikli Problemi</label>
+                <div id="spatial-problem-select" class="multi-choice-group" data-prompt-field="spatialProblem">
+                  <button type="button" class="choice-chip" data-prompt-field="spatialProblem"
+                    data-prompt-option="too-plain">Fazla Sade / Karaktersiz</button>
+                  <button type="button" class="choice-chip" data-prompt-field="spatialProblem"
+                    data-prompt-option="weak-acoustics">Akustik Zayif</button>
+                  <button type="button" class="choice-chip" data-prompt-field="spatialProblem"
+                    data-prompt-option="dated-look">Eski Gorunuyor</button>
+                  <button type="button" class="choice-chip" data-prompt-field="spatialProblem"
+                    data-prompt-option="weak-corporate-tone">Kurumsal Dili Zayif</button>
+                  <button type="button" class="choice-chip" data-prompt-field="spatialProblem"
+                    data-prompt-option="ceiling-language">Tavan Cozumu Yetersiz</button>
+                  <button type="button" class="choice-chip" data-prompt-field="spatialProblem"
+                    data-prompt-option="custom">Ozel</button>
+                </div>
+                <input id="spatial-problem-custom" type="text" class="text-input conditional-input hidden"
+                  placeholder="Ozel problem tanimi">
+                <span id="spatial-problem-ai-chip" class="badge info hidden"></span>
+                <p id="spatial-problem-help" class="micro-copy selection-help"></p>
+              </div>
+              <div>
+                <label class="field-label" for="palette-select">Renk Yonu</label>
+                <div id="palette-select" class="multi-choice-group" data-prompt-field="palette">
+                  <button type="button" class="choice-chip" data-prompt-field="palette"
+                    data-prompt-option="warm-neutral">Sicak Notr</button>
+                  <button type="button" class="choice-chip" data-prompt-field="palette"
+                    data-prompt-option="light-wood-stone">Acik Ahsap + Tas Tonlari</button>
+                  <button type="button" class="choice-chip" data-prompt-field="palette"
+                    data-prompt-option="soft-beige-gray">Yumusak Bej-Gri</button>
+                  <button type="button" class="choice-chip" data-prompt-field="palette"
+                    data-prompt-option="corporate-contrast">Kurumsal Koyu-Acik Denge</button>
+                  <button type="button" class="choice-chip" data-prompt-field="palette"
+                    data-prompt-option="muted-earth">Bastirilmis Toprak Tonlari</button>
+                  <button type="button" class="choice-chip" data-prompt-field="palette"
+                    data-prompt-option="monochrome">Monokrom</button>
+                  <button type="button" class="choice-chip" data-prompt-field="palette"
+                    data-prompt-option="custom">Ozel</button>
+                </div>
+                <div id="palette-custom" class="prompt-palette-composer hidden"></div>
+                <span id="palette-ai-chip" class="badge info hidden"></span>
+                <p id="palette-help" class="micro-copy selection-help"></p>
+              </div>
+              <div>
+                <label class="field-label" for="style-goal-select">Atmosfer Hedefi</label>
+                <div id="style-goal-select" class="multi-choice-group" data-prompt-field="styleGoal">
+                  <button type="button" class="choice-chip" data-prompt-field="styleGoal"
+                    data-prompt-option="calm-corporate">Sakin ve Kurumsal</button>
+                  <button type="button" class="choice-chip" data-prompt-field="styleGoal"
+                    data-prompt-option="warm-inviting">Sicak ve Davetkar</button>
+                  <button type="button" class="choice-chip" data-prompt-field="styleGoal"
+                    data-prompt-option="premium-refined">Premium ve Rafine</button>
+                  <button type="button" class="choice-chip" data-prompt-field="styleGoal"
+                    data-prompt-option="clean-technical">Temiz ve Teknik</button>
+                  <button type="button" class="choice-chip" data-prompt-field="styleGoal"
+                    data-prompt-option="hospitality-soft">Yumusak Hospitality</button>
+                  <button type="button" class="choice-chip" data-prompt-field="styleGoal"
+                    data-prompt-option="young-contemporary">Genc ve Cagdas</button>
+                  <button type="button" class="choice-chip" data-prompt-field="styleGoal"
+                    data-prompt-option="custom">Ozel</button>
+                </div>
+                <input id="style-goal-custom" type="text" class="text-input conditional-input hidden"
+                  placeholder="Ozel stil hedefi">
+                <span id="style-goal-ai-chip" class="badge info hidden"></span>
+                <p id="style-goal-help" class="micro-copy selection-help"></p>
+              </div>
+            </div>
+
+            <div class="button-chip-row prompt-mode-strip">
+              <button id="toggle-manual-note-button" type="button" class="ghost-button">Ek Manuel Not</button>
+              <button id="toggle-advanced-prompt-button" type="button" class="ghost-button">Gelismis Prompt
+                Araclari</button>
+            </div>
+
+            <div id="manual-note-wrap" class="advanced-prompt-wrap hidden">
+              <label class="field-label" for="design-prompt">Ek Manuel Not</label>
+              <textarea id="design-prompt" class="large-textarea compact-textarea" rows="5"
+                placeholder="Isterseniz seceneklere ek olarak kisa bir manuel not girebilirsiniz."></textarea>
+            </div>
+
+            <div id="advanced-prompt-wrap" class="advanced-prompt-wrap hidden">
+              <div class="prompt-builder-grid">
+                <div>
+                  <label class="field-label" for="prompt-builder-preserved">Korunacaklar</label>
+                  <textarea id="prompt-builder-preserved" class="large-textarea compact-textarea" rows="3"
+                    placeholder="Korunacak ana elemanlar"></textarea>
+                </div>
+                <div>
+                  <label class="field-label" for="prompt-builder-changed">Degisecekler</label>
+                  <textarea id="prompt-builder-changed" class="large-textarea compact-textarea" rows="3"
+                    placeholder="Revize edilecek elemanlar"></textarea>
+                </div>
+                <div>
+                  <label class="field-label" for="prompt-builder-budget-tone">Butce Tonu Notu</label>
+                  <input id="prompt-builder-budget-tone" type="text" class="text-input"
+                    placeholder="Orn. ekonomik, dengeli, premium">
+                </div>
+                <div>
+                  <label class="field-label" for="prompt-builder-buildability">Uygulanabilirlik Onceligi</label>
+                  <select id="prompt-builder-buildability" class="text-input">
+                    <option value="Yuksek">Yuksek</option>
+                    <option value="Dengeli">Dengeli</option>
+                    <option value="Deneysel">Deneysel</option>
+                  </select>
+                </div>
+                <div class="prompt-builder-span">
+                  <label class="field-label" for="prompt-builder-style">Ek Stil Notu</label>
+                  <input id="prompt-builder-style" type="text" class="text-input"
+                    placeholder="Orn. sakin, kurumsal, akustik olarak iyilesmis">
+                </div>
+              </div>
+
+              <label class="field-label" for="final-prompt-preview">Olusan Nihai Prompt</label>
+              <textarea id="final-prompt-preview" class="large-textarea compact-textarea" rows="6" readonly></textarea>
+              <div class="button-chip-row prompt-tools">
+                <button id="copy-prompt-button" type="button" class="secondary-button">Promptu Kopyala</button>
+                <button id="rewrite-prompt-button" type="button" class="ghost-button">AI ile Yeniden Yaz</button>
+              </div>
+            </div>
+
+            <div class="slider-header">
+              <div>
+                <label class="field-label" for="budget-slider-min">Hedef Butce</label>
+                <p class="micro-copy">Tek hedef sec veya alt-ust sinir belirleyip alternatifleri bu butce bandina yay.
+                </p>
+              </div>
+              <div class="slider-meta">
+                <strong id="budget-value" class="slider-value compact">0</strong>
+                <span id="budget-label" class="badge neutral">Belirtilmedi</span>
+              </div>
+            </div>
+            <div id="budget-range-control" class="budget-range-control">
+              <div class="budget-range-fill"></div>
+              <input id="budget-slider-min" class="budget-slider" type="range" min="0" max="5" step="1" value="0">
+              <input id="budget-slider-max" class="budget-slider" type="range" min="0" max="5" step="1" value="0">
+            </div>
+            <div class="budget-range-labels">
+              <span>Acik</span>
+              <span>Ekonomik</span>
+              <span>Standart</span>
+              <span>Dengeli</span>
+              <span>Ust Segment</span>
+              <span>Premium</span>
+            </div>
+
+            <div class="slider-header">
+              <div>
+                <label class="field-label" for="aggressiveness-slider-min">Mudahale Seviyesi</label>
+                <p class="micro-copy">Tek hedef sec veya alt-ust sinir tanimlayip AI'in mudahale sertligini bu bantta
+                  dagit.</p>
+              </div>
+              <div class="slider-meta">
+                <strong id="aggressiveness-value" class="slider-value compact">2</strong>
+                <span id="aggressiveness-label" class="badge neutral">Kontrollu</span>
+              </div>
+            </div>
+            <div id="aggressiveness-range-control" class="budget-range-control">
+              <div class="budget-range-fill"></div>
+              <input id="aggressiveness-slider-min" class="budget-slider" type="range" min="1" max="5" step="1"
+                value="2">
+              <input id="aggressiveness-slider-max" class="budget-slider" type="range" min="1" max="5" step="1"
+                value="2">
+            </div>
+            <div class="budget-range-labels is-five">
+              <span>Yuzeysel</span>
+              <span>Kontrollu</span>
+              <span>Yari Kapsamli</span>
+              <span>Belirgin</span>
+              <span>Radikal</span>
+            </div>
+
+            <div class="slider-header">
+              <div>
+                <label class="field-label" for="alternative-count-slider-min">Alternatif Sayisi</label>
+                <p class="micro-copy">Tek sayiya sabitle veya AI'in bu aralikta en uygun alternatif adedine karar
+                  vermesine izin ver.</p>
+              </div>
+              <div class="slider-meta">
+                <strong id="alternative-count-value" class="slider-value compact">4</strong>
+                <span id="alternative-count-label" class="badge neutral">Tek Hedef</span>
+              </div>
+            </div>
+            <div id="alternative-count-range-control" class="budget-range-control">
+              <div class="budget-range-fill"></div>
+              <input id="alternative-count-slider-min" class="budget-slider" type="range" min="1" max="6" step="1"
+                value="4">
+              <input id="alternative-count-slider-max" class="budget-slider" type="range" min="1" max="6" step="1"
+                value="4">
+            </div>
+            <div class="budget-range-labels">
+              <span>1</span>
+              <span>2</span>
+              <span>3</span>
+              <span>4</span>
+              <span>5</span>
+              <span>6</span>
+            </div>
+          </article>
+        </div>
+
+        <div class="section-actions">
+          <button id="design-synthesis-back-button" type="button" class="secondary-button">Geri</button>
+          <button id="generate-alternatives-button" type="button" class="primary-button">Alternatifleri Uret</button>
+        </div>
+      </section>
+
+      <section id="step-10" class="step-section">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Uretim</p>
+            <h2>Uretim</h2>
+          </div>
+          <p class="section-copy">Havuzdan gelen kararlarla alternatifleri dagitin, alternatif bazinda gorsel uretin ve
+            rapora girecekleri sepete ekleyin.</p>
+        </div>
+
+        <div class="canvas-toolbar">
+          <div class="toolbar-group">
+            <button id="alternatives-back-button" type="button" class="secondary-button">Analize Don</button>
+            <button id="alternatives-generate-button" type="button" class="secondary-button">Alternatifleri
+              Uret</button>
+          </div>
+        </div>
+
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <h3>Kaydedilen Alternatifler</h3>
+              <p>Bu mahalin mevcut hub kararlarini snapshot olarak saklayin ve dilediginiz anda geri yukleyin.</p>
+            </div>
+            <button id="save-current-alternative-button" type="button" class="primary-button">Bu Kararlari Kaydet</button>
+          </div>
+          <div id="saved-alternatives-list" class="saved-alternatives-list"></div>
+        </article>
+
+        <div id="alternatives-container" class="alternatives-grid uretim-layout-shell"></div>
+      </section>
+
+      <section id="step-11" class="step-section">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Step 11</p>
+            <h2>Render</h2>
+          </div>
+          <p class="section-copy">Secilen veya kalan alternatifler icin gorsel prompt uretin, placeholder gorselleri
+            yenileyin ve rapora eklenecek tasarimlari netlestirin.</p>
+        </div>
+
+        <div id="visual-selection-summary" class="visual-selection-summary"></div>
+        <div id="visual-material-storyboard-summary" class="storyboard-summary-panel compact"></div>
+        <div id="visual-panels" class="visual-panel-stack"></div>
+
+        <div class="section-actions">
+          <button type="button" class="secondary-button" data-nav-step="9">Geri</button>
+          <button type="button" class="primary-button" data-nav-step="12">Maliyete Gec</button>
+        </div>
+      </section>
+
+      <section id="step-12" class="step-section">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Step 12</p>
+            <h2>Maliyet Veritabani</h2>
+          </div>
+          <p class="section-copy">Ana maliyet verilerini ve onay bekleyen malzemeleri tablo odakli bicimde yonetin. Bu
+            ekran ust menuden her an erisilebilir.</p>
+        </div>
+
+        <div class="database-grid">
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <h3>Ana Maliyet Veritabani</h3>
+                <p>Birim ve iscilik degerleri prototip veritabanindan gelir; proje bazinda guncellenmelidir.</p>
+              </div>
+            </div>
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Malzeme Adi</th>
+                    <th>Birim</th>
+                    <th>Birim Fiyat</th>
+                    <th>Iscilik</th>
+                    <th>Tedarikci Notu</th>
+                  </tr>
+                </thead>
+                <tbody id="database-table-body"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <h3>Onay Bekleyenler / Bilinmeyen Malzemeler</h3>
+                <p>Step 4 icinde veritabaninda bulunamayan malzemeler otomatik burada listelenir.</p>
+              </div>
+            </div>
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Malzeme Adi</th>
+                    <th>Onerilen Birim</th>
+                    <th>Tahmini Fiyat</th>
+                    <th>Durum</th>
+                    <th>Islem</th>
+                  </tr>
+                </thead>
+                <tbody id="unknown-material-table-body"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="step-13" class="step-section">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Step 13</p>
+            <h2>Rapor</h2>
+          </div>
+          <p class="section-copy">Render ciktilarini ve disardan eklediginiz referanslari rapor havuzunda toplayin,
+            prompt ile rafine edilmis minimal bir rapor olusturun.</p>
+        </div>
+
+        <div class="report-grid">
+          <aside class="panel report-controls presentation-report-controls">
+            <div class="panel-header">
+              <div>
+                <h3>Rapor Workbench</h3>
+                <p>Render havuzu, disardan eklenen referanslar ve rapor notlarini burada toplayip rafine edin.</p>
+              </div>
+            </div>
+
+            <div class="report-workbench-actions">
+              <button id="refine-report-top-button" type="button" class="secondary-button">Raporu AI ile Hazirla</button>
+              <button id="export-report-html-top-button" type="button" class="ghost-button">HTML Indir</button>
+              <button id="export-report-top-button" type="button" class="primary-button">Sunumu Hazirla</button>
+            </div>
+
+            <div class="presentation-report-builder">
+              <div class="presentation-summary-stack">
+                <div>
+                  <label class="field-label" for="project-title-input">Proje Basligi</label>
+                  <input id="project-title-input" type="text" class="text-input"
+                    placeholder="Orn. Lobby Redesign / DesignLoop Demo">
+                </div>
+
+                <div>
+                  <label class="field-label" for="report-prompt-note">Rapor Notu / Prompt Yonu</label>
+                  <textarea id="report-prompt-note" class="large-textarea" rows="5"
+                    placeholder="Orn. Alternatifleri daha sakin, yonetsel ve karar odakli bir dille yeniden yaz. Maliyet farklarini kisa ve net ozetle."></textarea>
+                </div>
+
+                <div>
+                  <label class="field-label" for="report-evaluation">Rapor Degerlendirme Notu</label>
+                  <textarea id="report-evaluation" class="large-textarea" rows="6"
+                    placeholder="Bu alan rapora girecek icerigi yonlendirmek icin ek karar notlari icin kullanilir."></textarea>
+                </div>
+
+                <div class="report-external-form">
+                  <div>
+                    <label class="field-label" for="report-external-title">Dis Render Basligi</label>
+                    <input id="report-external-title" type="text" class="text-input"
+                      placeholder="Orn. Musteri referans renderi">
+                  </div>
+                  <div>
+                    <label class="field-label" for="report-external-note">Dis Render Notu</label>
+                    <textarea id="report-external-note" class="large-textarea" rows="4"
+                      placeholder="Bu renderin raporda nasil okunacagini veya hangi kararlarla iliskili oldugunu yazin."></textarea>
+                  </div>
+                  <input id="report-external-input" type="file" accept="image/*" hidden>
+                  <button id="report-external-add-button" type="button" class="ghost-button">Disardan Render
+                    Ekle</button>
+                </div>
+
+                <div id="report-source-pool" class="resource-pool-panel compact"></div>
+
+                <div class="section-actions compact">
+                  <button type="button" class="secondary-button" data-nav-step="10">Geri</button>
+                  <button id="refine-report-button" type="button" class="secondary-button">Raporu AI ile
+                    Hazirla</button>
+                  <button id="export-report-html-button" type="button" class="ghost-button">HTML Indir</button>
+                  <button id="export-report-button" type="button" class="primary-button">Sunumu Hazirla</button>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <article class="panel report-panel">
+            <div id="report-preview" class="report-preview"></div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="hub-selection-modal" class="hub-selection-modal hidden" aria-hidden="true">
+    <div class="hub-selection-dialog">
+      <div class="hub-selection-dialog-head">
+        <div>
+          <p class="section-kicker">Hub Secimi</p>
+          <h3>Bu projede hangi hublarla calismak istiyorsunuz?</h3>
+        </div>
+        <button type="button" class="icon-button" id="close-hub-selection-modal" aria-label="Kapat">×</button>
+      </div>
+      <p class="hub-selection-copy">Sectiginiz hublar nav'a dahil edilir, akista sadece onlarla ilgili paneller ve
+        gecisler aktif kalir.</p>
+      <div id="hub-selection-options" class="hub-selection-grid"></div>
+      <div class="hub-selection-actions">
+        <button type="button" class="secondary-button" id="cancel-hub-selection-button">Vazgec</button>
+        <button type="button" class="primary-button" id="confirm-hub-selection-button">Secimi Uygula ve Devam
+          Et</button>
+      </div>
+    </div>
+  </div>
+
+  <aside id="ai-settings-panel" class="drawer" aria-hidden="true">
+    <div class="drawer-header">
+      <div>
+        <p class="section-kicker">AI Ayarlari</p>
+        <h3>Servis Baglantilari</h3>
+      </div>
+      <button type="button" class="icon-button" id="close-ai-settings" aria-label="Kapat">×</button>
+    </div>
+
+    <div class="drawer-body">
+      <div class="info-card">
+        <span class="badge info">API Ready</span>
+        <p>Anahtar alanlari front-end demoda localStorage icinde saklanir. Anahtar yoksa AI akislari baslatilmaz.</p>
+      </div>
+
+      <label class="field-label" for="gemini-api-key">Gemini API Key</label>
+      <input id="gemini-api-key" type="password" class="text-input"
+        placeholder="Tek anahtarla text, vision ve image akislarini calistir">
+
+      <label class="field-label" for="llm-model">LLM Model</label>
+      <input id="llm-model" type="text" class="text-input" placeholder="gemini-3-pro-preview">
+
+      <label class="field-label" for="image-model">Image Model</label>
+      <input id="image-model" type="text" class="text-input" placeholder="gemini-3-pro-image-preview">
+
+      <label class="field-label" for="vision-model">Vision / Analysis Model</label>
+      <input id="vision-model" type="text" class="text-input" placeholder="gemini-3-flash-preview">
+
+      <div class="advanced-fields">
+        <div>
+          <label class="field-label">Hazir Profil</label>
+          <div id="ai-profile-buttons" class="pill-toggle-group ai-profile-group" role="group"
+            aria-label="AI model profilleri">
+            <button type="button" class="pill-toggle pill-tone-redesign" data-ai-profile="expensive">Pahali</button>
+            <button type="button" class="pill-toggle pill-tone-improve" data-ai-profile="cheap">Ucuz</button>
+          </div>
+        </div>
+      </div>
+
+      <button id="toggle-advanced-ai" type="button" class="ghost-button full-width">Ileri Seviye Anahtarlar</button>
+
+      <div id="advanced-ai-fields" class="advanced-fields hidden">
+        <div class="info-card">
+          <span class="badge warning">Opsiyonel</span>
+          <p>Varsayilan olarak ustteki tek Gemini API key tum akislarda kullanilir. Yalnizca farkli anahtar kullanmak
+            istersen asagidaki alanlari doldur.</p>
+        </div>
+
+        <label class="field-label" for="image-api-key">Image Override API Key</label>
+        <input id="image-api-key" type="password" class="text-input" placeholder="Bossa ana Gemini key kullanilir">
+
+        <label class="field-label" for="vision-api-key">Vision Override API Key</label>
+        <input id="vision-api-key" type="password" class="text-input" placeholder="Bossa ana Gemini key kullanilir">
+      </div>
+
+      <div class="drawer-status" id="ai-settings-status"></div>
+      <button id="save-ai-settings" type="button" class="primary-button full-width">Ayarlari Kaydet</button>
+    </div>
+  </aside>
+
+  <aside id="cost-database-drawer" class="drawer" aria-hidden="true">
+    <div class="drawer-header">
+      <div>
+        <p class="section-kicker">Maliyet Veritabani</p>
+        <h3>Fiyat ve Tedarik</h3>
+      </div>
+      <button type="button" class="icon-button" id="close-cost-database-drawer" aria-label="Kapat">×</button>
+    </div>
+
+    <div class="drawer-body">
+      <div class="info-card">
+        <span class="badge info">Global Panel</span>
+        <p>Fiyatlari ve bilinmeyen malzemeleri her adimdan cikmadan yandaki panelde yonetebilirsin.</p>
+      </div>
+
+      <div class="table-wrapper drawer-table">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Malzeme Adi</th>
+              <th>Birim</th>
+              <th>Birim Fiyat</th>
+              <th>Iscilik</th>
+              <th>Tedarikci Notu</th>
+            </tr>
+          </thead>
+          <tbody id="cost-database-drawer-body"></tbody>
+        </table>
+      </div>
+
+      <div class="table-wrapper drawer-table">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Malzeme Adi</th>
+              <th>Onerilen Birim</th>
+              <th>Tahmini Fiyat</th>
+              <th>Durum</th>
+              <th>Islem</th>
+            </tr>
+          </thead>
+          <tbody id="unknown-material-drawer-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </aside>
+
+
+  <div id="project-create-modal" class="project-create-modal hidden" aria-hidden="true">
+    <div class="project-create-backdrop" data-close-project-modal="true"></div>
+    <div class="project-create-dialog" role="dialog" aria-modal="true" aria-label="Yeni Proje Olustur">
+      <div class="project-create-header">
+        <div>
+          <p class="section-kicker" id="project-create-kicker">Yeni Proje</p>
+          <h3 id="project-create-title">Proje Olustur</h3>
+        </div>
+        <button type="button" class="icon-button" id="close-project-create-modal" aria-label="Kapat">×</button>
+      </div>
+      <div class="project-create-body">
+        <label class="field-label" for="new-project-name">Proje Adi *</label>
+        <input id="new-project-name" type="text" class="text-input" placeholder="Orn. Lobby Redesign, Ofis Yenileme" autofocus>
+
+        <label class="field-label" for="new-project-client">Musteri / Aidiyet</label>
+        <input id="new-project-client" type="text" class="text-input" placeholder="Orn. ABC Holding, Kisisel Proje">
+
+        <label class="field-label">Proje Tipi</label>
+        <div class="project-type-chips" id="new-project-type-chips">
+          <button type="button" class="choice-chip active" data-project-type="ofis">Ofis</button>
+          <button type="button" class="choice-chip" data-project-type="konut">Konut</button>
+          <button type="button" class="choice-chip" data-project-type="cafe-resto">Cafe / Resto</button>
+          <button type="button" class="choice-chip" data-project-type="otel">Otel / Hospitality</button>
+          <button type="button" class="choice-chip" data-project-type="perakende">Perakende</button>
+          <button type="button" class="choice-chip" data-project-type="diger">Diger</button>
+        </div>
+
+        <label class="field-label" for="new-project-notes">Proje Notu (opsiyonel)</label>
+        <textarea id="new-project-notes" class="large-textarea" rows="3" placeholder="Kurumsal ton, sabitler, konsept sinirlari..."></textarea>
+      </div>
+      <div class="project-create-actions">
+        <button type="button" class="ghost-button" id="cancel-project-create">Vazgec</button>
+        <button type="button" class="primary-button" id="confirm-project-create">Olustur</button>
+        <button type="button" class="primary-button hidden" id="confirm-project-edit">Kaydet</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="drawer-backdrop" class="drawer-backdrop hidden"></div>
+
+  <div id="image-lightbox" class="lightbox hidden" aria-hidden="true">
+    <div class="lightbox-backdrop" data-close-lightbox="true"></div>
+    <div class="lightbox-dialog" role="dialog" aria-modal="true" aria-label="Buyuk gorsel onizleme">
+      <button type="button" class="icon-button lightbox-close" id="close-lightbox" aria-label="Kapat">×</button>
+      <div class="lightbox-toolbar">
+        <button type="button" class="ghost-button lightbox-download-button" id="lightbox-download"
+          data-lightbox-download="true">Indir</button>
+      </div>
+      <div class="lightbox-stage">
+        <img id="lightbox-image" class="lightbox-image" src="" alt="">
+        <p id="lightbox-caption" class="lightbox-caption"></p>
+      </div>
+      <div id="lightbox-gallery" class="lightbox-gallery"></div>
+    </div>
+  </div>
+</body>
+
+</html>
