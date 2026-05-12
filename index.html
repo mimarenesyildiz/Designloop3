@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700&family=Manrope:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script defer src="db.js"></script>
@@ -17,58 +17,58 @@
   <script defer src="script.js"></script>
 </head>
 
-<body class="mimarenes-inspired-theme">
+<body class="mimarenes-inspired-theme header-v2">
   <div class="app-shell">
     <header class="top-header dark-command-bar">
-      <div class="header-band">
-        <div class="header-utility-row">
-          <div class="header-left-stack">
-            <div class="brand-block">
-              <p class="eyebrow">AI Iterative Design Costing Prototype</p>
-              <h1>DesignLoop</h1>
-              <div class="brand-mode-row">
-                <span class="meta-pill">Vanilla SPA Demo</span>
-                <span class="meta-pill" id="ai-status-pill">AI Gerekli</span>
-              </div>
-            </div>
-            <div class="header-meta">
-              <div id="project-summary" class="project-summary-slot"></div>
-            </div>
-          </div>
-          <div class="header-right-stack">
-            <div class="header-context-row">
-              <button id="header-reference-preview" type="button" class="header-reference-preview"></button>
+      <!-- BAND 1: Brand bar — system-level identity & status -->
+      <div class="brand-bar">
+        <div class="brand-bar-left">
+          <h1 class="brand-mark">DesignLoop</h1>
+          <span class="brand-version">v3 · preview</span>
+        </div>
+        <div class="brand-bar-right">
+          <span id="ai-status-pill" class="ai-status-dot is-warning">AI Yapılandırılmadı</span>
+          <div class="settings-menu-wrapper" id="settings-menu-wrapper">
+            <button type="button" class="icon-pill" id="settings-gear-button" title="Ayarlar"
+              aria-label="Ayarlar">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path
+                  d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </button>
+            <div id="settings-dropdown" class="settings-dropdown hidden">
+              <button type="button" class="settings-item" data-settings-action="project-settings">Proje Ayarları</button>
+              <button type="button" class="settings-item" data-settings-action="cost-database">Maliyet Veritabanı</button>
+              <button type="button" class="settings-item" data-settings-action="ai-settings">AI Ayarları</button>
             </div>
           </div>
         </div>
-        <div class="header-nav-row">
-          <div id="header-step-action-left" class="header-step-action-slot"></div>
-          <div class="header-nav-shell">
-            <nav id="top-nav" class="top-nav" aria-label="Ana navigasyon"></nav>
-            <div class="settings-menu-wrapper" id="settings-menu-wrapper">
-              <button type="button" class="nav-button utility" id="settings-gear-button" title="Ayarlar"
-                aria-label="Ayarlar">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="3" />
-                  <path
-                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                </svg>
-              </button>
-              <div id="settings-dropdown" class="settings-dropdown hidden">
-                <button type="button" class="settings-item" data-settings-action="project-settings">Proje Ayarlari</button>
-                <button type="button" class="settings-item" data-settings-action="cost-database">Maliyet
-                  Veritabani</button>
-                <button type="button" class="settings-item" data-settings-action="ai-settings">AI Ayarlari</button>
-              </div>
-            </div>
-          </div>
+      </div>
+
+      <!-- BAND 2: Context bar — project/step scope -->
+      <div class="context-bar">
+        <div class="context-bar-left">
+          <nav id="app-breadcrumb" class="app-breadcrumb" aria-label="Konum"></nav>
+        </div>
+
+        <div class="context-bar-center">
+          <nav id="top-nav" class="top-nav" aria-label="Ana navigasyon"></nav>
+        </div>
+
+        <div class="context-bar-right">
+          <div id="header-step-action-left" class="header-step-action-slot" hidden></div>
           <div id="header-step-action-right" class="header-step-action-slot"></div>
         </div>
       </div>
-    </header>
 
-    <nav id="app-breadcrumb" class="app-breadcrumb" aria-label="Konum"></nav>
+      <!-- Slim project context strip (only shows when project active) -->
+      <div id="project-summary" class="project-summary-slot project-summary-strip"></div>
+
+      <!-- Legacy reference slot, shown only when populated by JS -->
+      <button id="header-reference-preview" type="button" class="header-reference-preview is-empty" hidden></button>
+    </header>
 
     <div id="alert-region" class="alert-region" aria-live="polite"></div>
 
@@ -268,7 +268,36 @@
           </div>
         </div>
 
+        <!-- Inline Seçili Öneriler Havuzu -->
+        <article id="analiz-inline-pool" class="panel span-2 analiz-inline-pool-panel" style="display:none">
+          <div class="panel-header">
+            <div>
+              <h3>Secili Oneriler Havuzu</h3>
+              <p>Pin'lenen degerlendirme ve oneriler burada toplanir. Secilenleri prompt'a donusturun.</p>
+            </div>
+            <div id="analiz-pool-counter" class="analiz-pool-counter"></div>
+          </div>
+          <div id="analiz-pool-grid" class="analiz-pool-grid"></div>
+          <div id="analiz-inline-prompt-area" class="analiz-inline-prompt-area" style="display:none">
+            <div class="analiz-prompt-header">
+              <span class="section-kicker">Prompt Onizleme</span>
+              <div class="analiz-prompt-mode-toggle">
+                <button type="button" class="mode-pill is-active" data-inline-prompt-mode="auto">Tum Pinlerden</button>
+                <button type="button" class="mode-pill" data-inline-prompt-mode="manual">Secililerden</button>
+              </div>
+            </div>
+            <textarea id="analiz-inline-prompt-preview" class="large-textarea compact-textarea" rows="6" readonly></textarea>
+            <div class="analiz-prompt-actions">
+              <button id="analiz-copy-prompt-btn" type="button" class="ghost-button">Kopyala</button>
+              <button id="analiz-open-chatgpt-btn" type="button" class="ghost-button">ChatGPT</button>
+              <button id="analiz-open-gemini-btn" type="button" class="ghost-button">Gemini</button>
+              <button id="analiz-open-mj-btn" type="button" class="ghost-button">Midjourney</button>
+            </div>
+          </div>
+        </article>
+
         <div class="section-actions">
+          <button id="analiz-inline-prompt-btn" type="button" class="secondary-button" style="display:none">Secilenden Prompt Uret</button>
           <button id="analiz-generate-alternatives" type="button" class="primary-button">Alternatifleri Uret</button>
         </div>
       </section>
@@ -592,6 +621,9 @@
                 <h3>Ana Maliyet Veritabani</h3>
                 <p>Birim ve iscilik degerleri prototip veritabanindan gelir; proje bazinda guncellenmelidir.</p>
               </div>
+              <div style="flex: 1; max-width: 300px; margin-left: auto;">
+                <input id="cost-database-search-input" type="search" class="text-input" placeholder="Malzeme Ara..." oninput="if(typeof renderDatabaseTables==='function')renderDatabaseTables()">
+              </div>
             </div>
             <div class="table-wrapper">
               <table class="data-table">
@@ -809,6 +841,10 @@
       <div class="info-card">
         <span class="badge info">Global Panel</span>
         <p>Fiyatlari ve bilinmeyen malzemeleri her adimdan cikmadan yandaki panelde yonetebilirsin.</p>
+      </div>
+
+      <div style="margin-bottom: 1rem;">
+        <input id="cost-database-search-input-drawer" type="search" class="text-input" placeholder="Malzeme Ara..." oninput="document.getElementById('cost-database-search-input').value = this.value; if(typeof renderDatabaseTables==='function')renderDatabaseTables()">
       </div>
 
       <div class="table-wrapper drawer-table">

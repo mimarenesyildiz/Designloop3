@@ -1,6 +1,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const { URL } = require("url");
 
 const ROOT = __dirname;
@@ -8,6 +9,10 @@ const ENV = loadEnvFile(path.join(ROOT, ".env"));
 const PORT = Number(process.env.PORT || ENV.PORT || 3000);
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ENV.GEMINI_API_KEY || "";
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
+const API_AUTH_TOKEN = process.env.DESIGNLOOP_API_TOKEN || ENV.DESIGNLOOP_API_TOKEN || "";
+const API_RATE_LIMIT_WINDOW_MS = normalizePositiveInteger(process.env.API_RATE_LIMIT_WINDOW_MS || ENV.API_RATE_LIMIT_WINDOW_MS, 60_000);
+const API_RATE_LIMIT_MAX = normalizePositiveInteger(process.env.API_RATE_LIMIT_MAX || ENV.API_RATE_LIMIT_MAX, 30);
+const GEMINI_TIMEOUT_MS = normalizePositiveInteger(process.env.GEMINI_TIMEOUT_MS || ENV.GEMINI_TIMEOUT_MS, 60_000);
 const MAX_BODY_BYTES = 10 * 1024 * 1024; // 10 MB
 const VISION_TAKEOFF_STYLE_PREFIXES = [
   "modern",
@@ -45,11 +50,27 @@ const MIME_TYPES = {
   ".svg": "image/svg+xml",
 };
 
+const STATIC_FILE_ALLOWLIST = new Set([
+  "index.html",
+  "style.css",
+  "script.js",
+  "db.js",
+  "cost-database.js",
+  "cost-database.json",
+  "material-engine.js",
+  "katplani.jpeg",
+  "render.png",
+  "favicon.ico",
+]);
+
 const SECURITY_HEADERS = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
   "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Cross-Origin-Resource-Policy": "same-origin",
 };
+
+const apiRateBuckets = new Map();
 
 const server = http.createServer(async (req, res) => {
   // Apply security headers to every response
@@ -65,13 +86,14 @@ const server = http.createServer(async (req, res) => {
     return serveStaticFile(res, url.pathname);
   } catch (error) {
     console.error(error);
-    sendJson(res, 500, { error: "Server error" });
+    sendError(res, error);
   }
 });
 
 server.listen(PORT, () => {
   console.log(`DesignLoop server running at http://localhost:${PORT}`);
   console.log(GEMINI_API_KEY ? "Gemini API key loaded from backend env." : "Gemini API key not found. Frontend requires a configured key for AI features.");
+  console.log(API_AUTH_TOKEN ? "API auth token is enabled." : "API auth token is not configured; API routes rely on rate limits only.");
 });
 
 async function handleApiRequest(req, res, url) {
@@ -79,6 +101,11 @@ async function handleApiRequest(req, res, url) {
     return sendJson(res, 200, {
       ok: true,
       geminiConfigured: Boolean(GEMINI_API_KEY),
+      authRequired: Boolean(API_AUTH_TOKEN),
+      rateLimit: {
+        windowMs: API_RATE_LIMIT_WINDOW_MS,
+        max: API_RATE_LIMIT_MAX,
+      },
       backendMode: "server-env",
     });
   }
@@ -87,44 +114,40 @@ async function handleApiRequest(req, res, url) {
     return sendJson(res, 405, { error: "Method not allowed" });
   }
 
+  const routeHandler = API_ROUTE_HANDLERS[url.pathname];
+  if (!routeHandler) {
+    return sendJson(res, 404, { error: "API route not found" });
+  }
+
+  if (!isAuthorizedApiRequest(req)) {
+    res.setHeader("WWW-Authenticate", 'Bearer realm="DesignLoop API"');
+    return sendJson(res, 401, { error: "Unauthorized" });
+  }
+
+  const rateLimit = checkApiRateLimit(req, url.pathname);
+  if (!rateLimit.allowed) {
+    res.setHeader("Retry-After", String(Math.ceil(rateLimit.retryAfterMs / 1000)));
+    return sendJson(res, 429, { error: "Too many requests. Please retry shortly." });
+  }
+
   const body = await parseJsonBody(req);
 
   if (!resolveRequestApiKey(body)) {
     return sendJson(res, 503, { error: "Gemini API key is not configured on the backend and was not provided by the client." });
   }
 
-  if (url.pathname === "/api/analyze") {
-    const result = await analyzeWithGemini(body);
-    return sendJson(res, 200, result);
-  }
-
-  if (url.pathname === "/api/alternatives") {
-    const result = await generateAlternativesWithGemini(body);
-    return sendJson(res, 200, result);
-  }
-
-  if (url.pathname === "/api/visual-prompt") {
-    const result = await generateVisualPromptWithGemini(body);
-    return sendJson(res, 200, result);
-  }
-
-  if (url.pathname === "/api/generate-image") {
-    const result = await generateImageWithGemini(body);
-    return sendJson(res, 200, result);
-  }
-
-  if (url.pathname === "/api/segment") {
-    const result = await segmentWithGemini(body);
-    return sendJson(res, 200, result);
-  }
-
-  if (url.pathname === "/api/hub-evaluate") {
-    const result = await evaluateHubWithGemini(body);
-    return sendJson(res, 200, result);
-  }
-
-  return sendJson(res, 404, { error: "API route not found" });
+  const result = await routeHandler(body);
+  return sendJson(res, 200, result);
 }
+
+const API_ROUTE_HANDLERS = {
+  "/api/analyze": analyzeWithGemini,
+  "/api/alternatives": generateAlternativesWithGemini,
+  "/api/visual-prompt": generateVisualPromptWithGemini,
+  "/api/generate-image": generateImageWithGemini,
+  "/api/segment": segmentWithGemini,
+  "/api/hub-evaluate": evaluateHubWithGemini,
+};
 
 async function evaluateHubWithGemini(body) {
   const apiKey = resolveRequestApiKey(body);
@@ -404,6 +427,7 @@ function normalizeHubEvalResponse(parsed, hubType, selectedRegion) {
 }
 
 async function segmentWithGemini(body) {
+  const apiKey = resolveRequestApiKey(body);
   const imageData = body.imageData;
   const analysisContext = body.analysisContext || "";
   const segmentationTargets = Array.isArray(body.segmentationTargets) ? body.segmentationTargets : [];
@@ -462,6 +486,7 @@ Return JSON in this exact format:
 }`;
 
   const response = await callGeminiGenerateContent({
+    apiKey,
     model,
     contents: [{
       role: "user",
@@ -651,22 +676,45 @@ function resolveRequestApiKey(body = {}) {
 async function callGeminiGenerateContent({ apiKey, model, contents, generationConfig }) {
   const resolvedApiKey = String(apiKey || GEMINI_API_KEY || "").trim();
   if (!resolvedApiKey) {
-    throw new Error("Gemini API key is missing for this request.");
+    throw createHttpError(503, "Gemini API key is missing for this request.", "GEMINI_API_KEY_MISSING");
   }
-  const response = await fetch(`${GEMINI_BASE_URL}/${encodeURIComponent(model)}:generateContent`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": resolvedApiKey,
-    },
-    body: JSON.stringify({ contents, generationConfig }),
-  });
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+  let response;
+  try {
+    response = await fetch(`${GEMINI_BASE_URL}/${encodeURIComponent(model)}:generateContent`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": resolvedApiKey,
+      },
+      body: JSON.stringify({ contents, generationConfig }),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw createHttpError(504, `Gemini request timed out after ${GEMINI_TIMEOUT_MS}ms.`, "GEMINI_TIMEOUT");
+    }
+    throw createHttpError(502, "Gemini request failed before a response was received.", "GEMINI_NETWORK_ERROR");
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
-    throw new Error(`Gemini API error ${response.status}: ${await response.text()}`);
+    const upstreamText = await response.text().catch(() => "");
+    throw createHttpError(
+      502,
+      `Gemini API error ${response.status}. ${sanitizeUpstreamErrorText(upstreamText)}`.trim(),
+      "GEMINI_API_ERROR",
+    );
   }
 
-  return response.json();
+  try {
+    return await response.json();
+  } catch {
+    throw createHttpError(502, "Gemini API returned a non-JSON response.", "GEMINI_INVALID_RESPONSE");
+  }
 }
 
 function buildVisionAnalysisPrompt(files, planFile) {
@@ -758,7 +806,11 @@ function extractImageFromGeminiResponse(response) {
 
 function parseJsonResponse(text) {
   const cleaned = String(text || "").trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/i, "");
-  return JSON.parse(cleaned);
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    throw createHttpError(502, "AI response was not valid JSON.", "AI_INVALID_JSON");
+  }
 }
 
 function sanitizeVisionTakeoffItems(quantityTakeoff = []) {
@@ -884,6 +936,104 @@ function sendJson(res, statusCode, payload) {
   res.end(JSON.stringify(payload));
 }
 
+function sendPlain(res, statusCode, message) {
+  res.writeHead(statusCode, {
+    "Content-Type": "text/plain; charset=utf-8",
+    "Cache-Control": "no-store",
+  });
+  res.end(message);
+}
+
+function sendError(res, error) {
+  const statusCode = Number(error?.statusCode || error?.status || 500);
+  const safeStatusCode = Number.isInteger(statusCode) && statusCode >= 400 && statusCode < 600 ? statusCode : 500;
+  const payload = {
+    error: error?.publicMessage || (safeStatusCode >= 500 ? "Server error" : error?.message || "Request failed"),
+    code: error?.code || "SERVER_ERROR",
+  };
+  if (process.env.NODE_ENV !== "production" && error?.message && payload.error !== error.message) {
+    payload.detail = error.message;
+  }
+  sendJson(res, safeStatusCode, payload);
+}
+
+function createHttpError(statusCode, message, code, options = {}) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  error.code = code;
+  error.publicMessage = options.publicMessage || message;
+  return error;
+}
+
+function sanitizeUpstreamErrorText(value = "") {
+  return String(value || "")
+    .replace(/AIza[0-9A-Za-z_-]{20,}/g, "[redacted-api-key]")
+    .replace(/\s+/g, " ")
+    .slice(0, 500)
+    .trim();
+}
+
+function normalizePositiveInteger(value, fallback) {
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric > 0) return Math.floor(numeric);
+  return fallback;
+}
+
+function safeDecodePathname(pathname) {
+  try {
+    return decodeURIComponent(String(pathname || "/"));
+  } catch {
+    return "";
+  }
+}
+
+function isAuthorizedApiRequest(req) {
+  if (!API_AUTH_TOKEN) return true;
+  const providedToken = getApiAuthToken(req);
+  return timingSafeEqual(providedToken, API_AUTH_TOKEN);
+}
+
+function getApiAuthToken(req) {
+  const authHeader = String(req.headers.authorization || "");
+  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+  return String(bearerMatch?.[1] || req.headers["x-designloop-api-token"] || "").trim();
+}
+
+function timingSafeEqual(left, right) {
+  const leftBuffer = Buffer.from(String(left || ""));
+  const rightBuffer = Buffer.from(String(right || ""));
+  if (leftBuffer.length !== rightBuffer.length) return false;
+  return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function getClientIp(req) {
+  const forwarded = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  return forwarded || req.socket?.remoteAddress || "unknown";
+}
+
+function checkApiRateLimit(req, routePath) {
+  const now = Date.now();
+  const clientIp = getClientIp(req);
+  const key = `${clientIp}:${routePath}`;
+  let bucket = apiRateBuckets.get(key);
+  if (!bucket || now >= bucket.resetAt) {
+    bucket = { count: 0, resetAt: now + API_RATE_LIMIT_WINDOW_MS };
+    apiRateBuckets.set(key, bucket);
+  }
+  bucket.count += 1;
+
+  if (apiRateBuckets.size > 2000) {
+    for (const [bucketKey, entry] of apiRateBuckets.entries()) {
+      if (now >= entry.resetAt) apiRateBuckets.delete(bucketKey);
+    }
+  }
+
+  return {
+    allowed: bucket.count <= API_RATE_LIMIT_MAX,
+    retryAfterMs: Math.max(0, bucket.resetAt - now),
+  };
+}
+
 async function parseJsonBody(req) {
   const chunks = [];
   let totalBytes = 0;
@@ -891,33 +1041,58 @@ async function parseJsonBody(req) {
     totalBytes += chunk.length;
     if (totalBytes > MAX_BODY_BYTES) {
       req.destroy();
-      throw new Error("Request body too large");
+      throw createHttpError(413, "Request body too large.", "REQUEST_BODY_TOO_LARGE");
     }
     chunks.push(chunk);
   }
   const raw = Buffer.concat(chunks).toString("utf8");
-  return raw ? JSON.parse(raw) : {};
+  try {
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    throw createHttpError(400, "Request body must be valid JSON.", "INVALID_JSON_BODY");
+  }
 }
 
 function serveStaticFile(res, pathname) {
-  const safePath = pathname === "/" ? "/index.html" : pathname;
-  const requested = path.normalize(path.join(ROOT, safePath));
-  if (!requested.startsWith(ROOT)) {
-    return sendJson(res, 403, { error: "Forbidden" });
+  const decodedPath = safeDecodePathname(pathname);
+  if (!decodedPath) {
+    return sendPlain(res, 400, "Bad request");
+  }
+
+  const safePath = decodedPath === "/" ? "/index.html" : decodedPath;
+  const normalizedPath = path.posix.normalize(safePath);
+  const relativePath = normalizedPath.replace(/^\/+/, "");
+  const basename = path.posix.basename(relativePath);
+  const extension = path.posix.extname(relativePath).toLowerCase();
+  const hasFileExtension = Boolean(extension);
+
+  if (decodedPath.includes("..") || relativePath.split("/").some((segment) => segment.startsWith("."))) {
+    return sendPlain(res, 404, "Not found");
+  }
+
+  if (!STATIC_FILE_ALLOWLIST.has(relativePath)) {
+    if (!hasFileExtension) return serveStaticFile(res, "/index.html");
+    return sendPlain(res, 404, "Not found");
+  }
+
+  const requested = path.normalize(path.join(ROOT, relativePath));
+  if (!requested.startsWith(`${ROOT}${path.sep}`) && requested !== ROOT) {
+    return sendPlain(res, 403, "Forbidden");
   }
 
   fs.readFile(requested, (error, data) => {
     if (error) {
-      if (safePath !== "/index.html") {
+      if (!hasFileExtension && basename !== "index.html") {
         return serveStaticFile(res, "/index.html");
       }
-      res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-      res.end("Not found");
-      return;
+      return sendPlain(res, 404, "Not found");
     }
 
     const contentType = MIME_TYPES[path.extname(requested).toLowerCase()] || "application/octet-stream";
-    res.writeHead(200, { "Content-Type": contentType });
+    res.writeHead(200, {
+      "Content-Type": contentType,
+      "Cache-Control": contentType.startsWith("text/html") ? "no-store" : "public, max-age=300",
+    });
     res.end(data);
   });
 }

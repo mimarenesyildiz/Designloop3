@@ -384,6 +384,7 @@ const PAGE_DEFINITIONS = [
   { key: "analiz", label: "Analiz", steps: [2, 4, 5, 6, 7, 8, 9], defaultStep: 2 },
   { key: "uretim", label: "Üretim", steps: [3, 10, 11], defaultStep: 10 },
   { key: "rapor", label: "Rapor", steps: [13], defaultStep: 13 },
+  { key: "havuz", label: "Havuz", steps: [], defaultStep: null, virtual: true },
 ];
 const STEP_TO_PAGE = {};
 PAGE_DEFINITIONS.forEach((p) => p.steps.forEach((s) => { STEP_TO_PAGE[s] = p.key; }));
@@ -651,7 +652,7 @@ function renderBreadcrumb() {
   const slot = ui.appBreadcrumb || document.getElementById("app-breadcrumb");
   if (!slot) return;
   const crumbs = [];
-  crumbs.push({ label: "Tum Projeler", target: { view: "projects" }, current: appLocation.view === "projects" });
+  crumbs.push({ label: "Tüm Projeler", target: { view: "projects" }, current: appLocation.view === "projects" });
 
   if (appLocation.view === "project" || appLocation.view === "space") {
     const projectName = currentProject?.name || (appLocation.view === "space" ? "Proje" : dashboardState.projectId ? "Proje" : "");
@@ -1232,7 +1233,12 @@ function renderProjectsOverview(projectCardsMarkup = "", hasProjects = false) {
 
       ${hasProjects
         ? `<section class="projects-grid">${projectCardsMarkup}</section>`
-        : `<div class="dashboard-empty-state"><p>Henuz proje yok.</p><p class="micro-copy">Yukaridaki formu doldurup ilk projeni olusturabilirsin.</p></div>`}
+        : `<div class="dashboard-empty-state empty-state">
+             <div class="empty-state-icon" style="font-size: 3rem; margin-bottom: 1rem;">✨</div>
+             <h3>Henüz hiç projen yok</h3>
+             <p class="micro-copy">İlk projeni yaratarak başla ve tasarımlarını yönetmeye adım at.</p>
+             <button type="button" class="primary-button" style="margin-top: 1rem; padding: 0.75rem 2rem; font-size: 1.1rem;" data-dashboard-action="create-project">+ İlk Projeni Yarat</button>
+           </div>`}
     </section>
   `;
 }
@@ -1290,7 +1296,7 @@ function renderProjectIdentityTab(project, spaces = []) {
       <article class="panel project-identity-card">
         <div class="panel-header">
           <div>
-            <h3>Proje Kimligi</h3>
+            <h3>Proje Kimliği</h3>
             <p>Bu proje altindaki tum mahallerin referans aldigi ana kimlik bilgisi.</p>
           </div>
         </div>
@@ -1602,7 +1608,7 @@ function renderProjectIdentitySection(project, spaces = []) {
     <section class="project-settings-section" id="project-settings-identity">
       <div class="project-settings-section-head">
         <div>
-          <p class="section-kicker">01 · Proje Kimligi</p>
+          <p class="section-kicker">01 · Proje Kimliği</p>
           <h3>Kimlik ve Kontrol Merkezi</h3>
           <p>Projenin ana dili, paylasilan renk davranisi ve operasyon katmanlari burada sabitlenir.</p>
         </div>
@@ -1617,7 +1623,7 @@ function renderProjectIdentitySection(project, spaces = []) {
         <article class="panel project-identity-card project-settings-panel-accent">
           <div class="panel-header">
             <div>
-              <h3>Proje Kimligi</h3>
+              <h3>Proje Kimliği</h3>
               <p>Mahallerin referans aldigi proje adi, aidiyet ve ana notlar.</p>
             </div>
           </div>
@@ -1751,6 +1757,12 @@ function renderProjectIdentitySection(project, spaces = []) {
 function renderProjectDesignProfileSection(project, spaces = []) {
   const profile = project.designProfile || createDefaultDesignProfile();
   const isConfigured = isDesignProfileConfigured(profile);
+  const saveStateClass = projectEditorState.identitySaving
+    ? "is-saving"
+    : (projectEditorState.identityDirty ? "is-dirty" : "is-clean");
+  const saveStateLabel = projectEditorState.identitySaving
+    ? "Kaydediliyor"
+    : (projectEditorState.identityDirty ? "Taslak" : "Kayitli");
   const budgetOptions = [
     { value: "", label: "Belirtilmedi" },
     { value: "ekonomik", label: "Ekonomik" },
@@ -1955,8 +1967,12 @@ function renderProjectDesignProfileSection(project, spaces = []) {
           </label>
         </div>
 
-        <div class="project-identity-save-row">
-          <p class="micro-copy">Profil degisikliklerini kaydetmek icin Kimligi Kaydet butonunu kullanin.</p>
+        <div class="project-identity-save-row ${saveStateClass}">
+          <div class="project-identity-save-copy">
+            <span id="project-identity-status-badge" class="project-status-chip ${saveStateClass}">${saveStateLabel}</span>
+            <p id="project-identity-save-status" class="micro-copy">${projectEditorState.identityDirty ? "Kaydedilmemis degisiklikler var." : "Tum degisiklikler kayitli."}</p>
+          </div>
+          <button id="save-project-identity-button" type="button" class="primary-button" data-dashboard-action="save-project-identity" ${projectEditorState.identityDirty ? "" : "disabled"}>${projectEditorState.identitySaving ? "Kaydediliyor..." : "Kimligi Kaydet"}</button>
         </div>
       </article>
     </section>
@@ -3032,6 +3048,10 @@ function createInitialState() {
       lightingSuggestions: [],
       strategyNotes: [],
     },
+    // Faz 1: Pin sistemi — iterasyon bazlı havuz
+    iterations: [],
+    currentIterationId: "",
+    generalPool: [],
     materialTool: {
       selectedByTarget: {},
       surpriseByTarget: {},
@@ -3592,6 +3612,12 @@ function cacheDom() {
   ui.headerStepActionRight = document.getElementById("header-step-action-right");
   ui.alertRegion = document.getElementById("alert-region");
   ui.aiStatusPill = document.getElementById("ai-status-pill");
+  if (ui.aiStatusPill) {
+    ui.aiStatusPill.style.cursor = "pointer";
+    ui.aiStatusPill.addEventListener("click", () => {
+      if (typeof openAISettingsPanel === "function") openAISettingsPanel();
+    });
+  }
   ui.renderInput = document.getElementById("render-input");
   ui.planInput = document.getElementById("plan-input");
   ui.renderDropzone = document.getElementById("render-dropzone");
@@ -4079,6 +4105,8 @@ function bindEvents() {
       closeProjectIdentityCompass();
     }
   });
+  // Faz 1: Pin click delegation
+  document.addEventListener("click", handlePinIconClick);
   document.querySelectorAll("[data-trigger-input]").forEach((button) => {
     button.addEventListener("click", () => document.getElementById(button.dataset.triggerInput)?.click());
   });
@@ -4575,6 +4603,12 @@ function getSerializableState(mode = "full") {
 function showPage(pageKey) {
   const page = PAGE_BY_KEY[pageKey];
   if (!page) return;
+  if (page.key === "havuz") {
+    appState.currentPage = "havuz";
+    showMahalHavuzu();
+    renderTopNav();
+    return;
+  }
   showStep(page.defaultStep, { skipGuard: true });
 }
 
@@ -4661,7 +4695,12 @@ function renderTopNav() {
   ui.topNav.querySelectorAll("[data-page]").forEach((button) => {
     button.addEventListener("click", () => showPage(button.dataset.page));
   });
-  if (ui.aiStatusPill) ui.aiStatusPill.textContent = aiStatus.label;
+  if (ui.aiStatusPill) {
+    ui.aiStatusPill.textContent = aiStatus.label;
+    ui.aiStatusPill.classList.remove("is-ok", "is-warning");
+    if (aiStatus.tone === "ok") ui.aiStatusPill.classList.add("is-ok");
+    else if (aiStatus.tone === "warning") ui.aiStatusPill.classList.add("is-warning");
+  }
   sanitizeStaticUiText(ui.topNav);
 }
 
@@ -4669,7 +4708,7 @@ function getHeaderStepActions(stepNumber) {
   const pageKey = appState.currentPage;
   const pageActionMap = {
     kurulum: {
-      left: { label: "← Proje Detayina Don", mode: "event", action: "open-project-detail", variant: "secondary" },
+      left: { label: "← Proje Detayına Dön", mode: "event", action: "open-project-detail", variant: "secondary" },
       right: {
         label: appState.loading.analysis ? "Analiz Calisiyor..." : "Analiz Et",
         mode: "event",
@@ -4679,7 +4718,7 @@ function getHeaderStepActions(stepNumber) {
       },
     },
     analiz: {
-      left: { label: "← Proje Detayina Don", mode: "event", action: "open-project-detail", variant: "secondary" },
+      left: { label: "← Proje Detayına Dön", mode: "event", action: "open-project-detail", variant: "secondary" },
       right: {
         label: appState.loading.alternatives ? "Alternatifler Uretiliyor..." : "Alternatifleri Uret",
         mode: "event",
@@ -4718,7 +4757,7 @@ function renderProjectIdentityCompass() {
         data-header-action="toggle-identity-compass"
         aria-expanded="${projectIdentityCompassOpen ? "true" : "false"}"
         aria-haspopup="dialog">
-        Proje Kimligi
+        Proje Kimliği
       </button>
       <div class="project-identity-compass-popover${projectIdentityCompassOpen ? "" : " hidden"}" aria-hidden="${projectIdentityCompassOpen ? "false" : "true"}">
         <div class="project-identity-compass-head">
@@ -4776,7 +4815,7 @@ function renderProjectIdentityCompass() {
         </div>
         `}
         <div class="project-identity-compass-actions">
-          <button type="button" class="secondary-button" data-header-action="edit-project-identity">Proje Kimligini Duzenle</button>
+          <button type="button" class="secondary-button" data-header-action="edit-project-identity">Proje Kimliğini Duzenle</button>
         </div>
       </div>
     </div>
@@ -4797,10 +4836,11 @@ function closeProjectIdentityCompass() {
 
 function renderHeaderStepActions() {
   if (!ui.headerStepActionLeft || !ui.headerStepActionRight) return;
-  const { left, right } = getHeaderStepActions(appState.currentStep);
-  ui.headerStepActionLeft.innerHTML = left ? createHeaderStepActionMarkup(left) : "";
-  const rightFragments = [renderProjectIdentityCompass(), right ? createHeaderStepActionMarkup(right) : ""].filter(Boolean);
-  ui.headerStepActionRight.innerHTML = rightFragments.length ? `<div class="header-step-action-stack">${rightFragments.join("")}</div>` : "";
+  const { right } = getHeaderStepActions(appState.currentStep);
+  // v2: left back-actions removed (breadcrumb covers it).
+  // v2: Proje Kimliği compass removed (breadcrumb + ⚙ Proje Ayarları cover it).
+  ui.headerStepActionLeft.innerHTML = "";
+  ui.headerStepActionRight.innerHTML = right ? createHeaderStepActionMarkup(right) : "";
   syncHubOriginalPeekPlacement();
 
   [ui.headerStepActionLeft, ui.headerStepActionRight].forEach((slot) => {
@@ -5336,6 +5376,80 @@ function renderAnalizPage() {
   renderAnalysisSummary();
   renderAnalizHubNav();
   renderAnalizHubContent();
+  // Faz 1: Pin ikonlarını analiz kartlarına ekle
+  decorateAnalysisCardsWithPins();
+  // Inline havuz ve prompt alanını güncelle
+  renderAnalizInlinePool();
+}
+
+function decorateAnalysisCardsWithPins() {
+  const scope = document.getElementById("step-2") || document;
+  const attachPin = (host, { text, sectionLabel, intentOverride }) => {
+    if (!host || !text) return;
+    if (host.querySelector(":scope > .pin-icon")) return;
+    const sectionKey = inferPinSectionKey(sectionLabel || "Genel");
+    const intent = intentOverride || inferPinIntent(text);
+    const pinned = isPinned({ text, sectionKey });
+    if (getComputedStyle(host).position === "static") {
+      host.style.position = "relative";
+    }
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = buildPinIconMarkup({ text, sectionLabel: sectionLabel || "Genel", sectionKey, intent });
+    host.appendChild(wrapper.firstElementChild);
+    host.querySelector(".pin-icon").classList.toggle("is-pinned", pinned);
+  };
+
+  // 1) Hub renderers (.hub-eval-rec-item / .hub-eval-summary)
+  scope.querySelectorAll(".hub-eval-rec-item, .hub-eval-summary").forEach((item) => {
+    const section = item.closest(".hub-eval-section");
+    const sectionTitle = section?.querySelector(".hub-eval-section-title")?.textContent?.trim() || "Genel";
+    const strongEl = item.querySelector("strong");
+    const pEl = item.querySelector("p");
+    const titleText = strongEl?.textContent?.trim() || "";
+    const bodyText = pEl?.textContent?.trim() || item.textContent?.trim() || "";
+    if (!bodyText) return;
+    const text = titleText && titleText !== bodyText ? `${titleText} — ${bodyText}` : bodyText;
+    attachPin(item, { text, sectionLabel: sectionTitle });
+  });
+
+  // 2) Legacy critique dashboard
+  // 2a) Genel Değerlendirme (üst kart, uzun paragraf)
+  scope.querySelectorAll(".critique-overview-card").forEach((card) => {
+    const p = card.querySelector(".critique-general-text");
+    if (!p) return;
+    const text = p.textContent?.trim();
+    if (!text) return;
+    attachPin(card, { text, sectionLabel: "Genel Değerlendirme" });
+  });
+
+  // 2b) Güçlü Yönler — her li bir pin
+  scope.querySelectorAll(".critique-strengths-card .critique-list-green > li").forEach((li) => {
+    const text = li.textContent?.trim();
+    if (!text) return;
+    attachPin(li, { text, sectionLabel: "Güçlü Yönler", intentOverride: "apply" });
+  });
+
+  // 2c) Geliştirilmesi Gerekenler — her li bir pin (avoid)
+  scope.querySelectorAll(".critique-weaknesses-card .critique-list-red > li").forEach((li) => {
+    const text = li.textContent?.trim();
+    if (!text) return;
+    attachPin(li, { text, sectionLabel: "Geliştirilmesi Gerekenler", intentOverride: "avoid" });
+  });
+
+  // 2d) Her metrik kartının alt satırları — sectionLabel = kriterin label'ı
+  scope.querySelectorAll(".critique-group-card .critique-score-row").forEach((row) => {
+    const label = row.querySelector(".critique-score-label")?.textContent?.trim() || "Genel";
+    const comment = row.querySelector(".critique-score-comment")?.textContent?.trim();
+    if (!comment) return;
+    attachPin(row, { text: comment, sectionLabel: label });
+  });
+
+  // 2e) Akustik uyarı (avoid)
+  scope.querySelectorAll(".critique-acoustic-warning").forEach((card) => {
+    const text = card.querySelector(".critique-acoustic-text")?.textContent?.trim();
+    if (!text) return;
+    attachPin(card, { text, sectionLabel: "Akustik", intentOverride: "avoid" });
+  });
 }
 
 function getMetricColor(score, isPercent = false) {
@@ -5884,7 +5998,10 @@ function renderAnalysisSummary() {
                 <span class="critique-group-subtitle">${escapeHtml(group.subtitle)}</span>
               </div>
             </div>
-            <span class="critique-group-avg" style="color: ${group.color};">${groupAvg}</span>
+            <div class="critique-group-head-actions">
+              <span class="critique-group-avg" style="color: ${group.color};">${groupAvg}</span>
+              <button type="button" class="ghost-button tiny-button critique-bulk-pin-btn" data-bulk-pin-group="${escapeHtml(group.key)}" title="Bu grubu havuza ekle">Havuza Ekle</button>
+            </div>
           </div>
           <div class="critique-scores-list">
             ${criteriaHtml}
@@ -5931,11 +6048,17 @@ function renderAnalysisSummary() {
           </article>
           <div class="critique-top-stack">
             <article class="summary-card critique-strengths-card">
-              <span class="analysis-eyebrow critique-eyebrow-green">Guclu Yonler</span>
+              <div class="critique-section-head-row">
+                <span class="analysis-eyebrow critique-eyebrow-green">Guclu Yonler</span>
+                <button type="button" class="ghost-button tiny-button critique-bulk-pin-btn" data-bulk-pin="strengths" title="Tum guclu yonleri havuza ekle">Tumunu Sec</button>
+              </div>
               <ul class="critique-list critique-list-green">${gucluItems}</ul>
             </article>
             <article class="summary-card critique-weaknesses-card">
-              <span class="analysis-eyebrow critique-eyebrow-red">Gelistirilmesi Gerekenler</span>
+              <div class="critique-section-head-row">
+                <span class="analysis-eyebrow critique-eyebrow-red">Gelistirilmesi Gerekenler</span>
+                <button type="button" class="ghost-button tiny-button critique-bulk-pin-btn" data-bulk-pin="weaknesses" title="Tum zayif yonleri iyilestirme olarak havuza ekle">Tumunu Sec</button>
+              </div>
               <ul class="critique-list critique-list-red">${zayifItems}</ul>
             </article>
           </div>
@@ -5978,6 +6101,8 @@ function renderAnalysisSummary() {
   sanitizeStaticUiText(ui.analysisConfidenceStrip?.closest(".panel") || ui.analysisSummary);
   sanitizeStaticUiText(ui.analysisSummary);
   maybePrimeAnalysisReviewFlow();
+  // Toplu pin butonlarını bağla
+  bindCritiqueBulkPinButtons();
 }
 
 function deriveCompactVerificationItems(summary, takeoff) {
@@ -7537,6 +7662,1028 @@ function ensureAlternativeResourcePool() {
   appState.alternativeResourcePool = normalizeAlternativeResourcePool(appState.alternativeResourcePool);
   return appState.alternativeResourcePool;
 }
+
+// ─── Faz 1/2: Pin Sistemi & Iterasyonlar ───
+//
+// Veri modeli:
+//   appState.iterations[]    - bu mahalin iterasyon zinciri
+//   appState.currentIterationId  - aktif iterasyonun id'si
+//   appState.generalPool[]   - mahal-içi, iterasyondan bağımsız küratör havuzu
+//
+// Iteration:
+//   { id, ordinal, sourceIterationId, kind, createdAt,
+//     planRef, renderRefs[], analysisSnapshot, pins[], generatedPrompts[],
+//     renderSource: { kind: 'self'|'ai-tool', sourcePromptId } }
+//
+// Pin:
+//   { id, text, sectionLabel, sectionKey, intent, createdAt, altPoolItemId? }
+
+const PIN_SECTION_KEY_MAP = {
+  // Türkçe başlık -> kova anahtarı (mevcut alternativeResourcePool şeması ile uyumlu)
+  "renk": "color",
+  "renkler": "color",
+  "renk paleti": "color",
+  "renk-malzeme": "color",
+  "malzeme": "material",
+  "malzemeler": "material",
+  "malzeme & doku": "material",
+  "isik": "lighting",
+  "ışık": "lighting",
+  "isik performansi": "lighting",
+  "ışık performansı": "lighting",
+  "aydinlatma": "lighting",
+  "mobilya": "strategy",
+  "mobilya & ekipman": "strategy",
+  "akustik": "strategy",
+  "tavan": "strategy",
+  "plan": "strategy",
+  "plan cozumu": "strategy",
+  "ergonomi": "strategy",
+  "konsept": "strategy",
+  "kompozisyon": "strategy",
+  "genel": "strategy",
+  "genel degerlendirme": "strategy",
+  "genel değerlendirme": "strategy",
+};
+
+function inferPinSectionKey(sectionLabel = "") {
+  const norm = String(sectionLabel)
+    .toLocaleLowerCase("tr-TR")
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim();
+  if (!norm) return "strategy";
+  if (PIN_SECTION_KEY_MAP[norm]) return PIN_SECTION_KEY_MAP[norm];
+  for (const key of Object.keys(PIN_SECTION_KEY_MAP)) {
+    if (norm.includes(key)) return PIN_SECTION_KEY_MAP[key];
+  }
+  return "strategy";
+}
+
+const PIN_INTENT_AVOID_TOKENS = [
+  "zayif", "zayıf", "yetersiz", "eksik", "karaktersiz", "kotu", "kötü",
+  "duşuk", "düşük", "olumsuz", "tatmin etmiyor", "basarisiz", "başarısız",
+  "uygun degil", "uygun değil", "kacin", "kaçın", "sorun", "olumsuz",
+];
+
+function inferPinIntent(text = "") {
+  const norm = String(text).toLocaleLowerCase("tr-TR");
+  for (const token of PIN_INTENT_AVOID_TOKENS) {
+    if (norm.includes(token)) return "avoid";
+  }
+  return "apply";
+}
+
+function generatePinId() {
+  return `pin_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function generateIterationId() {
+  return `iter_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function ensureIterationsArray() {
+  if (!Array.isArray(appState.iterations)) appState.iterations = [];
+  if (!Array.isArray(appState.generalPool)) appState.generalPool = [];
+  return appState.iterations;
+}
+
+function getCurrentIteration() {
+  const list = ensureIterationsArray();
+  if (!appState.currentIterationId) return null;
+  return list.find((it) => it.id === appState.currentIterationId) || null;
+}
+
+function ensureCurrentIteration({ kind = "render-upload", sourceIterationId = "" } = {}) {
+  const list = ensureIterationsArray();
+  let current = getCurrentIteration();
+  if (current) return current;
+  const ordinal = list.length + 1;
+  current = {
+    id: generateIterationId(),
+    ordinal,
+    sourceIterationId: sourceIterationId || (list[list.length - 1]?.id ?? ""),
+    kind,
+    createdAt: new Date().toISOString(),
+    planRef: appState.uploadedPlan?.id || appState.uploadedPlan?.previewUrl || "",
+    renderRefs: (appState.uploadedRenders || []).map((r) => r?.id || "").filter(Boolean),
+    renderSource: { kind: "self", sourcePromptId: "" },
+    analysisSnapshot: null,
+    pins: [],
+    generatedPrompts: [],
+  };
+  list.push(current);
+  appState.currentIterationId = current.id;
+  return current;
+}
+
+function startNewIteration({ kind = "render-upload", sourceIterationId = "", renderSource = null } = {}) {
+  const list = ensureIterationsArray();
+  const ordinal = list.length + 1;
+  const previousId = appState.currentIterationId || (list[list.length - 1]?.id ?? "");
+  const iteration = {
+    id: generateIterationId(),
+    ordinal,
+    sourceIterationId: sourceIterationId || previousId,
+    kind,
+    createdAt: new Date().toISOString(),
+    planRef: appState.uploadedPlan?.id || appState.uploadedPlan?.previewUrl || "",
+    renderRefs: (appState.uploadedRenders || []).map((r) => r?.id || "").filter(Boolean),
+    renderSource: renderSource || { kind: "self", sourcePromptId: "" },
+    analysisSnapshot: null,
+    pins: [],
+    generatedPrompts: [],
+  };
+  list.push(iteration);
+  appState.currentIterationId = iteration.id;
+  return iteration;
+}
+
+function captureAnalysisSnapshotToCurrentIteration() {
+  const iteration = ensureCurrentIteration({ kind: "analyze" });
+  if (!iteration) return null;
+  iteration.analysisSnapshot = appState.analysisSummary ? deepClone(appState.analysisSummary) : null;
+  iteration.planRef = appState.uploadedPlan?.id || appState.uploadedPlan?.previewUrl || iteration.planRef;
+  iteration.renderRefs = (appState.uploadedRenders || []).map((r) => r?.id || "").filter(Boolean);
+  return iteration;
+}
+
+function findPinInIteration(iteration, { text, sectionKey }) {
+  if (!iteration || !Array.isArray(iteration.pins)) return null;
+  return iteration.pins.find((p) => p.text === text && p.sectionKey === sectionKey) || null;
+}
+
+function pinsAcrossAllIterations() {
+  const list = ensureIterationsArray();
+  return list.flatMap((it) => (it.pins || []).map((pin) => ({ ...pin, iterationId: it.id, iterationOrdinal: it.ordinal })));
+}
+
+function isPinned({ text, sectionKey }) {
+  const iteration = getCurrentIteration();
+  if (!iteration) return false;
+  return !!findPinInIteration(iteration, { text, sectionKey });
+}
+
+function addPinToAltPoolBridge(pin) {
+  // Mevcut alternativeResourcePool ile köprü: pin = strategyNotes'a düşer.
+  // Renk/malzeme/ışık için zaten dedicated akışlar var; pin'leri default olarak strategy notes'a koyuyoruz.
+  const pool = ensureAlternativeResourcePool();
+  const bucketByKey = {
+    color: pool.colorNotes,
+    material: pool.materials,
+    lighting: pool.lightingSuggestions,
+    strategy: pool.strategyNotes,
+  };
+  const bucket = bucketByKey[pin.sectionKey] || pool.strategyNotes;
+  const item = {
+    id: `poolfromPin_${pin.id}`,
+    type: pin.sectionKey,
+    title: pin.text.length > 80 ? pin.text.slice(0, 77) + "..." : pin.text,
+    summary: pin.text,
+    body: "",
+    sourceLabel: pin.sectionLabel,
+    dbItemId: "",
+    areaM2: 0,
+    budgetImpact: null,
+    meta: { fromPinId: pin.id, intent: pin.intent },
+    provenance: { source: "user", dataInputs: ["analysis"], affectedSurfaces: [], alternativeImpact: "" },
+    createdAt: new Date().toISOString(),
+  };
+  bucket.push(item);
+  pin.altPoolItemId = item.id;
+  return item;
+}
+
+function removePinFromAltPoolBridge(pin) {
+  if (!pin?.altPoolItemId) return;
+  const pool = ensureAlternativeResourcePool();
+  ["materials", "colorNotes", "lightingSuggestions", "strategyNotes"].forEach((bucketKey) => {
+    pool[bucketKey] = (pool[bucketKey] || []).filter((it) => it.id !== pin.altPoolItemId);
+  });
+}
+
+function togglePin({ text, sectionLabel, sectionKey, intent }) {
+  const cleanText = String(text || "").trim();
+  if (!cleanText) {
+    showAlert("Pin'lenecek metin bulunamadı.", "warning");
+    return false;
+  }
+  const resolvedSectionKey = sectionKey || inferPinSectionKey(sectionLabel || "");
+  const resolvedIntent = intent || inferPinIntent(cleanText);
+  const iteration = ensureCurrentIteration({ kind: appState.analysisSummary ? "analyze" : "render-upload" });
+  const existing = findPinInIteration(iteration, { text: cleanText, sectionKey: resolvedSectionKey });
+  if (existing) {
+    iteration.pins = iteration.pins.filter((p) => p.id !== existing.id);
+    removePinFromAltPoolBridge(existing);
+    saveState();
+    showAlert("Pin kaldırıldı.", "info");
+    refreshPinAffectedViews();
+    return false;
+  }
+  const pin = {
+    id: generatePinId(),
+    text: cleanText,
+    sectionLabel: String(sectionLabel || "Genel"),
+    sectionKey: resolvedSectionKey,
+    intent: resolvedIntent,
+    createdAt: new Date().toISOString(),
+  };
+  iteration.pins.push(pin);
+  addPinToAltPoolBridge(pin);
+  saveState();
+  showAlert(`"${pin.sectionLabel}" notu Mahal Havuzu'na eklendi.`, "success");
+  refreshPinAffectedViews();
+  return true;
+}
+
+function refreshPinAffectedViews() {
+  // Pin durumuna bağlı tüm UI parçalarını yenile.
+  document.querySelectorAll("[data-pin-target]").forEach((node) => {
+    const text = node.getAttribute("data-pin-text") || "";
+    const sectionKey = node.getAttribute("data-pin-section-key") || "";
+    const pinned = isPinned({ text, sectionKey });
+    node.classList.toggle("is-pinned", pinned);
+    node.setAttribute("aria-pressed", pinned ? "true" : "false");
+  });
+  if (typeof renderMahalHavuzu === "function") renderMahalHavuzu();
+  if (typeof renderAnalizInlinePool === "function") renderAnalizInlinePool();
+}
+
+function buildPinIconMarkup({ text, sectionLabel, sectionKey, intent }) {
+  const resolvedSectionKey = sectionKey || inferPinSectionKey(sectionLabel || "");
+  const pinned = isPinned({ text, sectionKey: resolvedSectionKey });
+  const safeText = escapeHtml(text || "");
+  const safeLabel = escapeHtml(sectionLabel || "Genel");
+  const safeKey = escapeHtml(resolvedSectionKey);
+  const safeIntent = escapeHtml(intent || "");
+  const title = pinned ? "Mahal Havuzu'ndan kaldır" : "Mahal Havuzu'na pin'le";
+  return `<button type="button"
+    class="pin-icon ${pinned ? "is-pinned" : ""}"
+    data-pin-target
+    data-pin-text="${safeText}"
+    data-pin-section="${safeLabel}"
+    data-pin-section-key="${safeKey}"
+    data-pin-intent="${safeIntent}"
+    aria-pressed="${pinned ? "true" : "false"}"
+    title="${title}"
+    aria-label="${title}">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <line x1="12" y1="17" x2="12" y2="22"/>
+      <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
+    </svg>
+  </button>`;
+}
+
+function handlePinIconClick(event) {
+  const button = event.target.closest("[data-pin-target]");
+  if (!button) return;
+  event.preventDefault();
+  event.stopPropagation();
+  togglePin({
+    text: button.getAttribute("data-pin-text") || "",
+    sectionLabel: button.getAttribute("data-pin-section") || "",
+    sectionKey: button.getAttribute("data-pin-section-key") || "",
+    intent: button.getAttribute("data-pin-intent") || "",
+  });
+}
+
+// ─── Mahal Havuzu sayfası ───
+function ensureMahalHavuzuShell() {
+  let host = document.getElementById("mahal-havuzu-section");
+  if (host) return host;
+  host = document.createElement("section");
+  host.id = "mahal-havuzu-section";
+  host.className = "step-section mahal-havuzu-section";
+  const main = document.querySelector("main.main-content");
+  if (main) main.appendChild(host);
+  return host;
+}
+
+function showMahalHavuzu() {
+  const host = ensureMahalHavuzuShell();
+  document.querySelectorAll(".step-section.active").forEach((s) => s.classList.remove("active"));
+  host.classList.add("active");
+  renderMahalHavuzu();
+}
+
+function renderMahalHavuzu() {
+  const host = document.getElementById("mahal-havuzu-section");
+  if (!host) return;
+  const list = ensureIterationsArray();
+  const generalPool = Array.isArray(appState.generalPool) ? appState.generalPool : [];
+
+  const allPins = pinsAcrossAllIterations();
+  const totalCount = allPins.length;
+
+  // Forking tree: çocukları source'a göre topla
+  const childrenOf = {};
+  list.forEach((it) => {
+    const sourceId = it.sourceIterationId || "";
+    if (!childrenOf[sourceId]) childrenOf[sourceId] = [];
+    childrenOf[sourceId].push(it);
+  });
+  const iterationsMarkup = list.length
+    ? `<div class="havuz-tree">${list.map((it, idx) => {
+        const pins = it.pins || [];
+        const pinChips = pins.length
+          ? pins.map((pin) => `
+            <li class="havuz-pin-card" data-intent="${escapeHtml(pin.intent || "apply")}">
+              <div class="havuz-pin-head">
+                <span class="havuz-pin-tag">${escapeHtml(pin.sectionLabel || "Genel")}</span>
+                <span class="havuz-pin-intent">${pin.intent === "avoid" ? "kaçın" : "uygula"}</span>
+              </div>
+              <p class="havuz-pin-text">${escapeHtml(pin.text)}</p>
+              <div class="havuz-pin-foot">
+                <button type="button" class="ghost-button tiny-button" data-havuz-promote-pin="${escapeHtml(pin.id)}" data-iteration-id="${escapeHtml(it.id)}">Genel Havuz'a taşı</button>
+                <button type="button" class="ghost-button tiny-button" data-havuz-remove-pin="${escapeHtml(pin.id)}" data-iteration-id="${escapeHtml(it.id)}">Kaldır</button>
+              </div>
+            </li>
+          `).join("")
+          : `<li class="havuz-empty-row">Bu iterasyonda pin yok.</li>`;
+        const kindLabel = ({
+          "render-upload": "Render",
+          "plan-change": "Plan değişimi",
+          "analyze": "Analiz",
+          "reanalyze": "Yeniden analiz",
+          "ai-generated": "AI çıktısı",
+        })[it.kind] || it.kind || "İterasyon";
+        const sourceIter = it.sourceIterationId ? list.find((x) => x.id === it.sourceIterationId) : null;
+        const children = childrenOf[it.id] || [];
+        const isBranch = sourceIter && idx > 0 && list[idx - 1]?.id !== it.sourceIterationId;
+        const renderSourceLabel = it.renderSource?.kind === "ai-tool" ? "AI çıktısı" : "Kendi yazılımı";
+        return `
+          <div class="havuz-tree-row ${isBranch ? "is-branch" : ""}" data-kind="${escapeHtml(it.kind || "render-upload")}">
+            <div class="havuz-tree-rail">
+              <span class="havuz-tree-node" title="İterasyon ${it.ordinal}"></span>
+            </div>
+            <article class="havuz-tree-iteration-card" data-iteration-id="${escapeHtml(it.id)}">
+              <header class="havuz-iteration-head">
+                <div class="havuz-iter-meta-row">
+                  <span class="havuz-iteration-ordinal">İterasyon ${it.ordinal}</span>
+                  <span class="havuz-iteration-kind">${escapeHtml(kindLabel)}</span>
+                  ${it.kind === "render-upload" ? `<span class="havuz-iter-source">${escapeHtml(renderSourceLabel)}</span>` : ""}
+                  ${sourceIter ? `<span class="havuz-iter-source">← İterasyon ${sourceIter.ordinal}</span>` : ""}
+                  ${children.length > 1 ? `<span class="havuz-iter-children">${children.length} dal</span>` : ""}
+                </div>
+                <span class="havuz-iteration-date">${escapeHtml(new Date(it.createdAt).toLocaleString("tr-TR"))}</span>
+              </header>
+              <ul class="havuz-pin-list">${pinChips}</ul>
+            </article>
+          </div>
+        `;
+      }).join("")}</div>`
+    : `<div class="havuz-empty">Henüz iterasyon yok. Render yükleyip analiz çalıştırınca pin'leyebileceğin notlar buraya düşer.</div>`;
+
+  const generalPoolMarkup = generalPool.length
+    ? generalPool.map((entry) => `
+        <li class="havuz-general-card">
+          <div class="havuz-pin-head">
+            <span class="havuz-pin-tag">${escapeHtml(entry.sectionLabel || "Genel")}</span>
+          </div>
+          <p class="havuz-pin-text">${escapeHtml(entry.text)}</p>
+          <button type="button" class="ghost-button tiny-button" data-havuz-remove-general="${escapeHtml(entry.id)}">Kaldır</button>
+        </li>
+      `).join("")
+    : `<li class="havuz-empty-row">Genel Havuz boş. İterasyonlardaki pin'lerden taşıyabilir veya manuel ekleyebilirsin.</li>`;
+
+  // Prompt atölyesi: tüm pin'leri (iterasyon + genel) topla
+  const allMahalPins = [
+    ...allPins.map((p) => ({ ...p, source: "iteration" })),
+    ...generalPool.map((g) => ({
+      id: g.id,
+      text: g.text,
+      sectionLabel: g.sectionLabel,
+      sectionKey: inferPinSectionKey(g.sectionLabel || ""),
+      intent: "apply",
+      source: "general",
+    })),
+  ];
+  const generatedPromptsAcrossIters = list.flatMap((it) => (it.generatedPrompts || []).map((p) => ({ ...p, iterationOrdinal: it.ordinal, iterationId: it.id })));
+  const promptMode = appState.promptWorkshopMode || "auto";
+  const selectedManualIds = appState.promptWorkshopManualSelection || [];
+
+  host.innerHTML = `
+    <div class="section-heading">
+      <div>
+        <p class="section-kicker">Mahal Havuzu</p>
+        <h2>Pin'lenmiş Notlar</h2>
+      </div>
+      <p class="section-copy">Analiz aşamasında iğne ile işaretlediğin değerlendirme ve öneriler iterasyonlara göre burada saklanır. Genel Havuz iterasyondan bağımsız kalıcı kararlarındır.</p>
+    </div>
+
+    <section class="prompt-workshop">
+      <header class="prompt-workshop-head">
+        <div>
+          <span class="section-kicker">Prompt Atölyesi</span>
+          <h3>Üretim için prompt çıkar</h3>
+        </div>
+        <div class="prompt-workshop-mode">
+          <button type="button" class="mode-pill ${promptMode === "auto" ? "is-active" : ""}" data-prompt-mode="auto">Otomatik</button>
+          <button type="button" class="mode-pill ${promptMode === "manual" ? "is-active" : ""}" data-prompt-mode="manual">Manuel</button>
+        </div>
+      </header>
+      <p class="prompt-workshop-hint">${promptMode === "auto"
+        ? "AI havuzdaki tüm pin'leri değerlendirir, anlamlı sayıda alternatif prompt üretir."
+        : "Aşağıdaki pin'lerden seçim yap; sadece seçili pin'lerden prompt üretilir."}</p>
+      ${promptMode === "manual" ? `
+        <div class="prompt-workshop-pins">
+          ${allMahalPins.length ? allMahalPins.map((p) => `
+            <label class="prompt-pin-check">
+              <input type="checkbox" data-prompt-pin-id="${escapeHtml(p.id)}" ${selectedManualIds.includes(p.id) ? "checked" : ""}>
+              <div>
+                <span class="prompt-pin-tag">${escapeHtml(p.sectionLabel || "Genel")}</span>
+                <span class="prompt-pin-intent ${p.intent === "avoid" ? "is-avoid" : ""}">${p.intent === "avoid" ? "kaçın" : "uygula"}</span>
+                <span class="prompt-pin-source">${p.source === "general" ? "Genel" : "İterasyon"}</span>
+                <p>${escapeHtml(p.text)}</p>
+              </div>
+            </label>
+          `).join("") : `<div class="havuz-empty-row">Henüz pin yok.</div>`}
+        </div>
+      ` : ""}
+      <div class="prompt-workshop-actions">
+        <button type="button" class="primary-button" id="prompt-generate-btn" ${allMahalPins.length ? "" : "disabled"}>
+          ${promptMode === "auto" ? "AI ile Prompt'lar Üret" : `${selectedManualIds.length} pin'den Prompt Üret`}
+        </button>
+      </div>
+
+      ${generatedPromptsAcrossIters.length ? `
+        <div class="prompt-workshop-results">
+          <h4>Üretilmiş Prompt'lar (${generatedPromptsAcrossIters.length})</h4>
+          <div class="prompt-card-list">
+            ${generatedPromptsAcrossIters.map((p) => `
+              <article class="prompt-card" data-prompt-id="${escapeHtml(p.id)}">
+                <header class="prompt-card-head">
+                  <strong>${escapeHtml(p.alternativeLabel || "Alternatif")}</strong>
+                  <span class="prompt-card-meta">İter ${p.iterationOrdinal} · ${escapeHtml(p.mode)}</span>
+                </header>
+                <p class="prompt-card-text">${escapeHtml(p.text)}</p>
+                <footer class="prompt-card-actions">
+                  <button type="button" class="ghost-button small-button" data-prompt-copy="${escapeHtml(p.id)}">Kopyala</button>
+                  <button type="button" class="ghost-button small-button" data-prompt-tool="chatgpt" data-prompt-id="${escapeHtml(p.id)}">ChatGPT</button>
+                  <button type="button" class="ghost-button small-button" data-prompt-tool="gemini" data-prompt-id="${escapeHtml(p.id)}">Gemini</button>
+                  <button type="button" class="ghost-button small-button" data-prompt-tool="midjourney" data-prompt-id="${escapeHtml(p.id)}">Midjourney</button>
+                  <button type="button" class="ghost-button small-button" data-prompt-tool="dreamstudio" data-prompt-id="${escapeHtml(p.id)}">DreamStudio</button>
+                  <button type="button" class="ghost-button small-button danger" data-prompt-delete="${escapeHtml(p.id)}" data-iteration-id="${escapeHtml(p.iterationId)}">Sil</button>
+                </footer>
+              </article>
+            `).join("")}
+          </div>
+        </div>
+      ` : ""}
+    </section>
+
+    <div class="havuz-grid">
+      <div class="havuz-iterations-col">
+        <div class="havuz-section-head">
+          <h3>İterasyonlar <span class="muted">(${totalCount} pin)</span></h3>
+        </div>
+        <div class="havuz-iterations-stack">${iterationsMarkup}</div>
+      </div>
+      <aside class="havuz-general-col">
+        <div class="havuz-section-head">
+          <h3>Genel Havuz</h3>
+          <p class="micro-copy">İterasyondan bağımsız kalıcı kararlar.</p>
+        </div>
+        <ul class="havuz-general-list">${generalPoolMarkup}</ul>
+        <div class="havuz-general-add">
+          <input type="text" id="havuz-general-input" class="text-input" placeholder="Yeni genel not (örn. tüm proje sıcak tonda)">
+          <button type="button" class="ghost-button" id="havuz-general-add-btn">+ Ekle</button>
+        </div>
+      </aside>
+    </div>
+  `;
+
+  // Prompt mode toggle
+  host.querySelectorAll("[data-prompt-mode]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      appState.promptWorkshopMode = btn.getAttribute("data-prompt-mode");
+      saveState();
+      renderMahalHavuzu();
+    });
+  });
+  // Manual pin selection
+  host.querySelectorAll("[data-prompt-pin-id]").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const id = cb.getAttribute("data-prompt-pin-id");
+      const sel = new Set(appState.promptWorkshopManualSelection || []);
+      if (cb.checked) sel.add(id); else sel.delete(id);
+      appState.promptWorkshopManualSelection = Array.from(sel);
+      saveState();
+      // Re-render only the action button label
+      const btn = host.querySelector("#prompt-generate-btn");
+      if (btn) btn.textContent = `${sel.size} pin'den Prompt Üret`;
+    });
+  });
+  // Generate prompts
+  const genBtn = host.querySelector("#prompt-generate-btn");
+  if (genBtn) genBtn.addEventListener("click", () => generatePromptsForCurrentIteration());
+
+  // Copy / tool buttons / delete
+  host.querySelectorAll("[data-prompt-copy]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-prompt-copy");
+      const prompt = generatedPromptsAcrossIters.find((p) => p.id === id);
+      if (prompt) copyPromptToClipboard(prompt.text);
+    });
+  });
+  host.querySelectorAll("[data-prompt-tool]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-prompt-id");
+      const tool = btn.getAttribute("data-prompt-tool");
+      const prompt = generatedPromptsAcrossIters.find((p) => p.id === id);
+      if (prompt) openImageAITool(tool, prompt.text);
+    });
+  });
+  host.querySelectorAll("[data-prompt-delete]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-prompt-delete");
+      const iterId = btn.getAttribute("data-iteration-id");
+      const iter = list.find((it) => it.id === iterId);
+      if (!iter) return;
+      iter.generatedPrompts = (iter.generatedPrompts || []).filter((p) => p.id !== id);
+      saveState();
+      renderMahalHavuzu();
+    });
+  });
+
+  host.querySelectorAll("[data-havuz-promote-pin]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const pinId = btn.getAttribute("data-havuz-promote-pin");
+      const iterId = btn.getAttribute("data-iteration-id");
+      const iter = list.find((it) => it.id === iterId);
+      const pin = iter?.pins?.find((p) => p.id === pinId);
+      if (!pin) return;
+      appState.generalPool = appState.generalPool || [];
+      appState.generalPool.push({
+        id: `gp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        text: pin.text,
+        sectionLabel: pin.sectionLabel,
+        sourcePinId: pin.id,
+        createdAt: new Date().toISOString(),
+      });
+      saveState();
+      renderMahalHavuzu();
+      showAlert("Genel Havuz'a taşındı.", "success");
+    });
+  });
+
+  host.querySelectorAll("[data-havuz-remove-pin]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const pinId = btn.getAttribute("data-havuz-remove-pin");
+      const iterId = btn.getAttribute("data-iteration-id");
+      const iter = list.find((it) => it.id === iterId);
+      if (!iter) return;
+      const pin = (iter.pins || []).find((p) => p.id === pinId);
+      iter.pins = (iter.pins || []).filter((p) => p.id !== pinId);
+      if (pin) removePinFromAltPoolBridge(pin);
+      saveState();
+      renderMahalHavuzu();
+      refreshPinAffectedViews();
+    });
+  });
+
+  host.querySelectorAll("[data-havuz-remove-general]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-havuz-remove-general");
+      appState.generalPool = (appState.generalPool || []).filter((g) => g.id !== id);
+      saveState();
+      renderMahalHavuzu();
+    });
+  });
+
+  const addBtn = host.querySelector("#havuz-general-add-btn");
+  const addInput = host.querySelector("#havuz-general-input");
+  if (addBtn && addInput) {
+    const submit = () => {
+      const text = (addInput.value || "").trim();
+      if (!text) return;
+      appState.generalPool = appState.generalPool || [];
+      appState.generalPool.push({
+        id: `gp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        text,
+        sectionLabel: "Genel",
+        sourcePinId: "",
+        createdAt: new Date().toISOString(),
+      });
+      saveState();
+      renderMahalHavuzu();
+    };
+    addBtn.addEventListener("click", submit);
+    addInput.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+  }
+}
+// ─── Inline Analiz Havuzu & Prompt Üretici ───
+
+function renderAnalizInlinePool() {
+  const poolPanel = document.getElementById("analiz-inline-pool");
+  const poolGrid = document.getElementById("analiz-pool-grid");
+  const poolCounter = document.getElementById("analiz-pool-counter");
+  const promptBtn = document.getElementById("analiz-inline-prompt-btn");
+  const promptArea = document.getElementById("analiz-inline-prompt-area");
+  if (!poolPanel || !poolGrid) return;
+
+  const iteration = getCurrentIteration();
+  const iterPins = iteration?.pins || [];
+  const generalPool = Array.isArray(appState.generalPool) ? appState.generalPool : [];
+  const allPins = [
+    ...iterPins.map((p) => ({ ...p, source: "iteration" })),
+    ...generalPool.map((g) => ({
+      id: g.id, text: g.text, sectionLabel: g.sectionLabel,
+      sectionKey: inferPinSectionKey(g.sectionLabel || ""),
+      intent: "apply", source: "general",
+    })),
+  ];
+
+  // Count by section
+  const counts = { color: 0, material: 0, lighting: 0, strategy: 0 };
+  allPins.forEach((p) => { const k = p.sectionKey || "strategy"; if (counts[k] !== undefined) counts[k]++; else counts.strategy++; });
+  const total = allPins.length;
+
+  if (total === 0) {
+    poolPanel.style.display = "none";
+    if (promptBtn) promptBtn.style.display = "none";
+    return;
+  }
+
+  poolPanel.style.display = "";
+  if (promptBtn) promptBtn.style.display = "";
+
+  // Counter badges
+  if (poolCounter) {
+    const badges = [];
+    if (counts.color) badges.push(`<span class="badge info">Renk ${counts.color}</span>`);
+    if (counts.material) badges.push(`<span class="badge info">Malzeme ${counts.material}</span>`);
+    if (counts.lighting) badges.push(`<span class="badge info">Isik ${counts.lighting}</span>`);
+    if (counts.strategy) badges.push(`<span class="badge info">Strateji ${counts.strategy}</span>`);
+    poolCounter.innerHTML = `<span class="badge success">${total} pin</span> ${badges.join("")}`;
+  }
+
+  // Pool grid: show pinned items grouped by sectionKey
+  const groupedMap = {};
+  allPins.forEach((p) => {
+    const k = p.sectionKey || "strategy";
+    (groupedMap[k] = groupedMap[k] || []).push(p);
+  });
+  const sectionLabels = { color: "Renk Kararlari", material: "Malzeme Onerileri", lighting: "Isik Senaryolari", strategy: "Strateji Notlari" };
+  const intentBadge = (intent) => intent === "avoid" ? '<span class="badge warning">kacin</span>' : '<span class="badge success">uygula</span>';
+
+  poolGrid.innerHTML = Object.entries(groupedMap).map(([key, pins]) => `
+    <div class="analiz-pool-section">
+      <h4 class="analiz-pool-section-title">${escapeHtml(sectionLabels[key] || key)}</h4>
+      <div class="analiz-pool-items">
+        ${pins.map((p) => `
+          <div class="analiz-pool-item" data-intent="${escapeHtml(p.intent || "apply")}" data-pool-pin-id="${escapeHtml(p.id)}">
+            <div class="analiz-pool-item-head">
+              ${intentBadge(p.intent)}
+              <span class="analiz-pool-item-source">${escapeHtml(p.sectionLabel || "Genel")}</span>
+            </div>
+            <p>${escapeHtml(p.text.length > 140 ? p.text.slice(0, 137) + "..." : p.text)}</p>
+            <button type="button" class="ghost-button tiny-button analiz-pool-remove" data-remove-pool-pin="${escapeHtml(p.id)}" data-remove-source="${escapeHtml(p.source)}" title="Havuzdan kaldir">×</button>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `).join("");
+
+  // Remove buttons
+  poolGrid.querySelectorAll("[data-remove-pool-pin]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const pinId = btn.getAttribute("data-remove-pool-pin");
+      const source = btn.getAttribute("data-remove-source");
+      if (source === "general") {
+        appState.generalPool = (appState.generalPool || []).filter((g) => g.id !== pinId);
+      } else {
+        const iter = getCurrentIteration();
+        if (iter) {
+          const pin = (iter.pins || []).find((p) => p.id === pinId);
+          iter.pins = (iter.pins || []).filter((p) => p.id !== pinId);
+          if (pin) removePinFromAltPoolBridge(pin);
+        }
+      }
+      saveState();
+      refreshPinAffectedViews();
+      renderAnalizInlinePool();
+    });
+  });
+
+  // Inline prompt generation
+  if (promptBtn) {
+    promptBtn.onclick = () => {
+      generateAnalizInlinePrompt();
+    };
+  }
+}
+
+function generateAnalizInlinePrompt() {
+  const promptArea = document.getElementById("analiz-inline-prompt-area");
+  const preview = document.getElementById("analiz-inline-prompt-preview");
+  if (!promptArea || !preview) return;
+
+  const iteration = getCurrentIteration();
+  const iterPins = iteration?.pins || [];
+  const generalPool = Array.isArray(appState.generalPool) ? appState.generalPool : [];
+  const allPins = [
+    ...iterPins.map((p) => ({ ...p, source: "iteration" })),
+    ...generalPool.map((g) => ({
+      id: g.id, text: g.text, sectionLabel: g.sectionLabel,
+      sectionKey: inferPinSectionKey(g.sectionLabel || ""),
+      intent: "apply", source: "general",
+    })),
+  ];
+
+  if (!allPins.length) {
+    showAlert("Havuzda pin yok. Once analiz kartlarindan oneriler secin.", "warning");
+    return;
+  }
+
+  // Inject project context into prompt
+  const sceneCtx = inferSceneProgramContext();
+  const critique = appState.analysisSummary?.designCritique;
+  const avgScore = critique?.skorlar
+    ? (() => {
+        const scores = Object.values(critique.skorlar).map((c) => c?.puan || 0).filter((v) => v > 0);
+        return scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : "";
+      })()
+    : "";
+
+  const contextLines = [];
+  contextLines.push(`# Tasarim Revizyon Promptu`);
+  if (sceneCtx.primaryLabel) contextLines.push(`\nMekan turu: ${sceneCtx.primaryLabel}${sceneCtx.secondaryLabel ? " / " + sceneCtx.secondaryLabel : ""}`);
+  if (avgScore) contextLines.push(`Mevcut tasarim skoru: ${avgScore}/10`);
+
+  // Get design profile context if available
+  const project = getActiveProject?.() || null;
+  const identity = project?.identity;
+  if (identity?.philosophy) contextLines.push(`Tasarim felsefesi: ${identity.philosophy}`);
+
+  const promptText = contextLines.join("\n") + "\n" + buildPromptFromPins(allPins, "Analiz Onerileri");
+
+  promptArea.style.display = "";
+  preview.value = promptText;
+
+  // Also store in iteration
+  if (iteration) {
+    iteration.generatedPrompts = iteration.generatedPrompts || [];
+    const prompt = {
+      id: `prompt_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      text: promptText,
+      alternativeLabel: "Analiz Inline",
+      basisPinIds: allPins.map((p) => p.id),
+      mode: "inline",
+      createdAt: new Date().toISOString(),
+    };
+    iteration.generatedPrompts.push(prompt);
+    saveState();
+  }
+
+  showAlert(`${allPins.length} pin'den prompt uretildi.`, "success");
+
+  // Bind action buttons
+  const copyBtn = document.getElementById("analiz-copy-prompt-btn");
+  if (copyBtn) copyBtn.onclick = () => copyPromptToClipboard(promptText);
+  const chatgptBtn = document.getElementById("analiz-open-chatgpt-btn");
+  if (chatgptBtn) chatgptBtn.onclick = () => openImageAITool("chatgpt", promptText);
+  const geminiBtn = document.getElementById("analiz-open-gemini-btn");
+  if (geminiBtn) geminiBtn.onclick = () => openImageAITool("gemini", promptText);
+  const mjBtn = document.getElementById("analiz-open-mj-btn");
+  if (mjBtn) mjBtn.onclick = () => openImageAITool("midjourney", promptText);
+}
+
+function bindCritiqueBulkPinButtons() {
+  const scope = document.getElementById("step-2") || document;
+  const critique = appState.analysisSummary?.designCritique;
+  if (!critique) return;
+
+  // Bulk strengths button
+  scope.querySelectorAll('[data-bulk-pin="strengths"]').forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const items = critique.gucluYonler || [];
+      let added = 0;
+      items.forEach((text) => {
+        const sectionKey = "strategy";
+        if (!isPinned({ text, sectionKey })) {
+          togglePin({ text, sectionLabel: "Guclu Yonler", sectionKey, intent: "apply" });
+          added++;
+        }
+      });
+      if (added === 0) showAlert("Tum guclu yonler zaten havuzda.", "info");
+      else showAlert(`${added} guclu yon havuza eklendi.`, "success");
+      renderAnalizInlinePool();
+    });
+  });
+
+  // Bulk weaknesses button
+  scope.querySelectorAll('[data-bulk-pin="weaknesses"]').forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const items = critique.zayifYonler || [];
+      let added = 0;
+      items.forEach((text) => {
+        const sectionKey = "strategy";
+        if (!isPinned({ text, sectionKey })) {
+          togglePin({ text, sectionLabel: "Gelistirilmesi Gerekenler", sectionKey, intent: "avoid" });
+          added++;
+        }
+      });
+      if (added === 0) showAlert("Tum zayif yonler zaten havuzda.", "info");
+      else showAlert(`${added} zayif yon iyilestirme olarak havuza eklendi.`, "success");
+      renderAnalizInlinePool();
+    });
+  });
+
+  // Bulk group pin buttons
+  scope.querySelectorAll("[data-bulk-pin-group]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const groupKey = btn.getAttribute("data-bulk-pin-group");
+      const critiqueGroups = {
+        islev: ["mekansalOrganizasyon", "ergonomiEsneklik"],
+        atmosfer: ["isikPerformansi", "malzemeDoku"],
+        estetik: ["gorselKompozisyon", "konseptUyumu"],
+        fizibilite: ["uretilebilirlik", "butceVerimliligi"],
+      };
+      const criteriaKeys = critiqueGroups[groupKey] || [];
+      const skorlar = critique.skorlar || {};
+      let added = 0;
+      criteriaKeys.forEach((key) => {
+        const entry = skorlar[key];
+        if (!entry) return;
+        const puan = entry.puan || 0;
+        const yorum = entry.yorum || "";
+        if (!yorum) return;
+        const text = `${key} (${puan}/10): ${yorum}`;
+        const sectionKey = inferPinSectionKey(key);
+        if (!isPinned({ text, sectionKey })) {
+          const intent = puan <= 5 ? "avoid" : "apply";
+          togglePin({ text, sectionLabel: key, sectionKey, intent });
+          added++;
+        }
+      });
+      if (added === 0) showAlert("Bu grubun tum kriterleri zaten havuzda.", "info");
+      else showAlert(`${added} kriter havuza eklendi.`, "success");
+      renderAnalizInlinePool();
+    });
+  });
+}
+
+// ─── Faz 3: Prompt Atölyesi ───
+
+function buildPromptFromPins(pins, alternativeLabel = "Ana Yön") {
+  const apply = pins.filter((p) => p.intent !== "avoid");
+  const avoid = pins.filter((p) => p.intent === "avoid");
+  const groupBy = (arr) => arr.reduce((acc, p) => {
+    const key = p.sectionLabel || "Genel";
+    (acc[key] = acc[key] || []).push(p.text);
+    return acc;
+  }, {});
+  const applyGroups = groupBy(apply);
+  const avoidGroups = groupBy(avoid);
+  const lines = [];
+  lines.push(`# ${alternativeLabel}`);
+  if (Object.keys(applyGroups).length) {
+    lines.push("\n## Uygulanacak yönergeler");
+    Object.entries(applyGroups).forEach(([label, items]) => {
+      lines.push(`\n**${label}:**`);
+      items.forEach((t) => lines.push(`- ${t}`));
+    });
+  }
+  if (Object.keys(avoidGroups).length) {
+    lines.push("\n## Kaçınılacak / iyileştirilecek yönler");
+    Object.entries(avoidGroups).forEach(([label, items]) => {
+      lines.push(`\n**${label}:**`);
+      items.forEach((t) => lines.push(`- ${t}`));
+    });
+  }
+  lines.push("\n## Çıktı için talimat");
+  lines.push("Yukarıdaki yönergeleri yorumlayan, mevcut mekan kompozisyonunu koruyan, mimari kalitede bir iç mekan render'ı üret. Kameranın açısı ve ışık zamanı değişmesin.");
+  return lines.join("\n");
+}
+
+function generatePromptsForCurrentIteration() {
+  const list = ensureIterationsArray();
+  const generalPool = Array.isArray(appState.generalPool) ? appState.generalPool : [];
+  const allPins = [
+    ...pinsAcrossAllIterations(),
+    ...generalPool.map((g) => ({
+      id: g.id,
+      text: g.text,
+      sectionLabel: g.sectionLabel,
+      sectionKey: inferPinSectionKey(g.sectionLabel || ""),
+      intent: "apply",
+    })),
+  ];
+  if (!allPins.length) {
+    showAlert("Önce analiz çıktılarından pin yapın.", "warning");
+    return;
+  }
+  const mode = appState.promptWorkshopMode || "auto";
+  const iteration = ensureCurrentIteration({ kind: "ai-generated" });
+  iteration.generatedPrompts = iteration.generatedPrompts || [];
+  if (mode === "manual") {
+    const sel = new Set(appState.promptWorkshopManualSelection || []);
+    const selected = allPins.filter((p) => sel.has(p.id));
+    if (!selected.length) {
+      showAlert("Manuel modda en az bir pin seç.", "warning");
+      return;
+    }
+    const prompt = {
+      id: `prompt_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      text: buildPromptFromPins(selected, "Manuel Seçim"),
+      alternativeLabel: "Manuel Seçim",
+      basisPinIds: selected.map((p) => p.id),
+      mode: "manual",
+      createdAt: new Date().toISOString(),
+    };
+    iteration.generatedPrompts.push(prompt);
+    saveState();
+    renderMahalHavuzu();
+    showAlert("Prompt üretildi.", "success");
+    return;
+  }
+  // Otomatik mod: pin'leri sectionKey'e göre grupla, her grubun ağırlığına göre N alternatif çıkar.
+  // Akıllı selection için basit algoritma:
+  // - Her unique sectionKey için 1 alternatif (apply pinleri ön planda, avoid pinleri kısıtlama olarak)
+  // - Ek olarak "ana yön" (tüm apply pinleri içeren) bir alternatif
+  const sectionGroups = {};
+  allPins.forEach((p) => {
+    const key = p.sectionKey || "strategy";
+    (sectionGroups[key] = sectionGroups[key] || []).push(p);
+  });
+  const sectionLabelByKey = {
+    color: "Renk Yönü",
+    material: "Malzeme Yönü",
+    lighting: "Işık Yönü",
+    strategy: "Strateji Yönü",
+  };
+  const prompts = [];
+  // 1) Ana yön — tüm pin'lerden
+  prompts.push({
+    id: `prompt_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    text: buildPromptFromPins(allPins, "Ana Yön"),
+    alternativeLabel: "Ana Yön",
+    basisPinIds: allPins.map((p) => p.id),
+    mode: "auto",
+    createdAt: new Date().toISOString(),
+  });
+  // 2) Her seksiyon-spesifik alternatif (yalnızca o seksiyondaki pin'ler ağırlıklı, gerisi destek)
+  Object.entries(sectionGroups).forEach(([key, pins]) => {
+    if (pins.length < 1) return;
+    const label = sectionLabelByKey[key] || `${key} Yönü`;
+    // Avoid pin'leri tüm gruplarla taşı (kısıtlama olarak), apply'lar bu grup öncelikli
+    const focused = [...pins, ...allPins.filter((p) => p.intent === "avoid" && p.sectionKey !== key)];
+    prompts.push({
+      id: `prompt_${Date.now() + Math.random()}_${Math.random().toString(36).slice(2, 7)}`,
+      text: buildPromptFromPins(focused, label),
+      alternativeLabel: label,
+      basisPinIds: focused.map((p) => p.id),
+      mode: "auto",
+      createdAt: new Date().toISOString(),
+    });
+  });
+  iteration.generatedPrompts.push(...prompts);
+  saveState();
+  renderMahalHavuzu();
+  showAlert(`${prompts.length} alternatif prompt üretildi.`, "success");
+}
+
+function copyPromptToClipboard(text) {
+  if (!navigator.clipboard) {
+    showAlert("Tarayıcı clipboard API'sini desteklemiyor.", "warning");
+    return;
+  }
+  navigator.clipboard.writeText(text).then(
+    () => showAlert("Prompt kopyalandı.", "success"),
+    () => showAlert("Kopyalama başarısız.", "warning"),
+  );
+}
+
+const IMAGE_AI_TOOL_URLS = {
+  chatgpt: "https://chat.openai.com/",
+  gemini: "https://gemini.google.com/",
+  midjourney: "https://www.midjourney.com/imagine",
+  dreamstudio: "https://beta.dreamstudio.ai/",
+};
+
+function openImageAITool(toolKey, promptText) {
+  const url = IMAGE_AI_TOOL_URLS[toolKey];
+  if (!url) return;
+  // Önce kopyala, sonra aç
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(promptText).then(() => {
+      window.open(url, "_blank", "noopener,noreferrer");
+      showAlert(`Prompt kopyalandı, ${toolKey} açıldı. Yapıştırarak kullanabilirsin.`, "success");
+    }, () => {
+      window.open(url, "_blank", "noopener,noreferrer");
+      showAlert(`${toolKey} açıldı (kopyalama başarısız oldu).`, "info");
+    });
+  } else {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
+// ─── /Faz 3 ───
+// ─── /Faz 1/2 ───
 
 function ensureAlternativeBoard() {
   appState.alternativeBoard = normalizeAlternativeBoardState(appState.alternativeBoard);
@@ -9675,8 +10822,13 @@ function renderUretimRenderArea(alternatives) {
         const visual = appState.generatedVisuals?.[alternative.id];
         const inBasket = !!(appState.reportBasket || []).find((item) => item.altId === alternative.id);
         const isRendering = !!(appState.loading.rerolling?.[alternative.id]);
+        const altCost = Number(alternative?.costSummary?.total || 0);
+        const altIndex = alternatives.findIndex((a) => a.id === alternative.id);
+        const altLetter = altIndex >= 0 ? String.fromCharCode(65 + altIndex) : "";
         return `
               <article class="uretim-render-card">
+                <span class="alt-card-tag">${altLetter ? `${altLetter} · ` : ""}${escapeHtml(compactHubText(alternative.title || "", 32))}</span>
+                ${altCost > 0 ? `<span class="alt-card-cost">${escapeHtml(formatCurrency(altCost))}</span>` : ""}
                 <div class="uretim-render-card-head">
                   <strong>${escapeHtml(alternative.title)}</strong>
                   <span class="badge ${inBasket ? "success" : "neutral"}">${inBasket ? "Raporda" : "Sepette degil"}</span>
@@ -10240,13 +11392,20 @@ function renderVisualSelectionSummary() {
 }
 
 function renderDatabaseTables() {
-  const mainMarkup = appState.costDatabase.map((item) => `
+  const filterVal = (document.getElementById("cost-database-search-input")?.value || "").toLowerCase();
+  const filteredData = appState.costDatabase.filter(item => 
+    !filterVal || 
+    item.name.toLowerCase().includes(filterVal) || 
+    item.category.toLowerCase().includes(filterVal)
+  );
+
+  const mainMarkup = filteredData.map((item) => `
     <tr>
-      <td><input class="table-input" type="text" value="${escapeHtml(item.name)}" data-db-id="${item.id}" data-db-field="name"></td>
-      <td><input class="table-input" type="text" value="${escapeHtml(item.unit)}" data-db-id="${item.id}" data-db-field="unit"></td>
-      <td><input class="table-input" type="number" step="1" min="0" value="${item.unitPrice}" data-db-id="${item.id}" data-db-field="unitPrice"></td>
-      <td><input class="table-input" type="number" step="1" min="0" value="${item.labor}" data-db-id="${item.id}" data-db-field="labor"></td>
-      <td><input class="table-input" type="text" value="${escapeHtml(item.supplierNote)}" data-db-id="${item.id}" data-db-field="supplierNote"></td>
+      <td><input class="table-input" type="text" value="${escapeHtml(item.name)}" data-db-id="${item.id}" data-db-field="name" style="border: none; background: transparent; width: 100%; font-family: inherit; font-size: inherit; outline: none; border-bottom: 1px solid transparent; transition: border-color 0.2s; padding: 4px;" onfocus="this.style.borderBottom='1px solid var(--border-color)'" onblur="this.style.borderBottom='1px solid transparent'"></td>
+      <td><input class="table-input" type="text" value="${escapeHtml(item.unit)}" data-db-id="${item.id}" data-db-field="unit" style="border: none; background: transparent; width: 100%; font-family: inherit; font-size: inherit; outline: none; border-bottom: 1px solid transparent; transition: border-color 0.2s; padding: 4px;" onfocus="this.style.borderBottom='1px solid var(--border-color)'" onblur="this.style.borderBottom='1px solid transparent'"></td>
+      <td><input class="table-input" type="number" step="1" min="0" value="${item.unitPrice}" data-db-id="${item.id}" data-db-field="unitPrice" style="border: none; background: transparent; width: 100%; font-family: inherit; font-size: inherit; outline: none; border-bottom: 1px solid transparent; transition: border-color 0.2s; padding: 4px;" onfocus="this.style.borderBottom='1px solid var(--border-color)'" onblur="this.style.borderBottom='1px solid transparent'"></td>
+      <td><input class="table-input" type="number" step="1" min="0" value="${item.labor}" data-db-id="${item.id}" data-db-field="labor" style="border: none; background: transparent; width: 100%; font-family: inherit; font-size: inherit; outline: none; border-bottom: 1px solid transparent; transition: border-color 0.2s; padding: 4px;" onfocus="this.style.borderBottom='1px solid var(--border-color)'" onblur="this.style.borderBottom='1px solid transparent'"></td>
+      <td><input class="table-input" type="text" value="${escapeHtml(item.supplierNote)}" data-db-id="${item.id}" data-db-field="supplierNote" style="border: none; background: transparent; width: 100%; font-family: inherit; font-size: inherit; outline: none; border-bottom: 1px solid transparent; transition: border-color 0.2s; padding: 4px;" onfocus="this.style.borderBottom='1px solid var(--border-color)'" onblur="this.style.borderBottom='1px solid transparent'"></td>
     </tr>
   `).join("");
   if (ui.databaseTableBody) ui.databaseTableBody.innerHTML = mainMarkup;
@@ -10662,7 +11821,7 @@ function renderReportCostComparison(entries = []) {
   ];
   return `
     <section class="report-card">
-      <h3>Maliyet Karsilastirma</h3>
+      <h3 data-num="§ 03">Maliyet Karsilastirma</h3>
       <div class="report-cost-table-wrap">
         <table class="report-table report-cost-table">
           <thead>
@@ -10751,7 +11910,7 @@ function renderReport() {
           <span class="badge warning">${sourceEntries.length} kaynak bekliyor</span>
         </header>
         <article class="report-card">
-          <h3>Rapor Havuzu Hazir</h3>
+          <h3 data-num="§ 00">Rapor Havuzu Hazir</h3>
           <p>Bu rapora sadece prompt ile elden gecirilmis veriler girer. Su an ${sourceEntries.length} kaynak hazir. &quot;Raporu AI ile Hazirla&quot; dediginizde bu kaynaklar sade ve minimal rapor kartlarina donusturulur.</p>
         </article>
       </div>
@@ -10774,10 +11933,10 @@ function renderReport() {
         <span class="badge ${isStale ? "warning" : "success"}">${isStale ? "Kaynaklar guncellendi" : "Rafine veri aktif"}</span>
       </header>
       <section class="report-card executive-card">
-        <h3>Yonetici Ozeti</h3>
+        <h3 data-num="§ 01">Yonetici Ozeti</h3>
         <p>${escapeHtml(appState.reportData.overallEvaluation || "Rapor ozeti henuz uretilmedi.")}</p>
       </section>
-      <section class="report-alternatives report-alternatives-minimal">
+      <section class="report-alternatives report-alternatives-minimal" data-num="§ 02">
         ${currentStateEntry ? `
           <article class="report-alternative report-alternative-minimal is-current-state">
             ${currentStateEntry.imageUrl ? `<img src="${currentStateEntry.imageUrl}" alt="${escapeHtml(currentStateEntry.title)}">` : ""}
@@ -11042,18 +12201,106 @@ async function handleRenderUpload(files) {
   appState.uploadedRenders.push(...preparedFiles);
   if (!appState.selectedReferenceRenderId) appState.selectedReferenceRenderId = appState.uploadedRenders[0]?.id || "";
   resetWorkflowAfterUploadChange();
+  // Faz 2: Yeni render → kullanıcıya kaynak sor + yeni iterasyon başlat
+  const renderSource = await promptRenderSource(preparedFiles);
+  if (getCurrentIteration()?.analysisSnapshot || (appState.iterations?.length && getCurrentIteration())) {
+    // Önceki iterasyon analiz almışsa → yeni iterasyon başlat
+    startNewIteration({ kind: "render-upload", renderSource });
+  } else {
+    // Hiç iterasyon yok ya da current henüz analiz almadı → mevcut iterasyonu güncelle
+    const cur = ensureCurrentIteration({ kind: "render-upload" });
+    cur.renderSource = renderSource;
+    cur.renderRefs = appState.uploadedRenders.map((r) => r.id).filter(Boolean);
+  }
   saveState();
   refreshWorkflowAfterUploadChange();
-  showAlert("Yeni render yüklendi. Onceki analiz ve alternatifler temizlendi; yeniden analiz calistirin.", "info");
+  showAlert("Yeni render yüklendi. Önceki analiz ve alternatifler temizlendi; yeniden analiz çalıştırın.", "info");
 }
 
 async function handlePlanUpload(file) {
   if (!file) return;
   appState.uploadedPlan = await prepareUploadedFile(file, "Kat Plani");
   resetWorkflowAfterUploadChange();
+  // Faz 2: Plan değişimi → yeni iterasyon (q14)
+  if (getCurrentIteration()?.analysisSnapshot) {
+    startNewIteration({ kind: "plan-change" });
+  } else {
+    ensureCurrentIteration({ kind: "plan-change" });
+  }
   saveState();
   refreshWorkflowAfterUploadChange();
-  showAlert("Kat plani guncellendi. Onceki analiz ve alternatifler temizlendi; yeniden analiz calistirin.", "info");
+  showAlert("Kat planı güncellendi. Önceki analiz ve alternatifler temizlendi; yeniden analiz çalıştırın.", "info");
+}
+
+// Faz 2: Render upload modal — kaynak seçimi
+function promptRenderSource(preparedFiles) {
+  return new Promise((resolve) => {
+    // Eğer hiç pin yoksa ve hiç iterasyon yoksa, kaynak sormaya gerek yok (v1 başlangıç).
+    const list = ensureIterationsArray();
+    if (!list.length || !pinsAcrossAllIterations().length) {
+      resolve({ kind: "self", sourcePromptId: "" });
+      return;
+    }
+    // Önceki iterasyonlardaki generatedPrompts'u topla
+    const allPrompts = list.flatMap((it) => (it.generatedPrompts || []).map((p) => ({ ...p, iterationOrdinal: it.ordinal })));
+    const overlay = document.createElement("div");
+    overlay.className = "render-source-modal-overlay";
+    overlay.innerHTML = `
+      <div class="render-source-modal">
+        <header>
+          <p class="section-kicker">Yeni Render</p>
+          <h3>Bu render nereden geldi?</h3>
+        </header>
+        <div class="render-source-options">
+          <label class="render-source-option">
+            <input type="radio" name="render-source" value="self" checked>
+            <div>
+              <strong>Kendi yazılımım</strong>
+              <p>3D render programında kendim hazırladım.</p>
+            </div>
+          </label>
+          <label class="render-source-option">
+            <input type="radio" name="render-source" value="ai-tool">
+            <div>
+              <strong>AI çıktısı</strong>
+              <p>Image AI aracından (GPT-Image, Nano Banana, Midjourney, vb.) ürettim.</p>
+            </div>
+          </label>
+        </div>
+        ${allPrompts.length ? `
+          <div class="render-source-prompt-pick" hidden>
+            <label class="field-label">
+              <span>Bu render hangi prompt'tan geldi?</span>
+              <select id="render-source-prompt-select" class="text-input">
+                <option value="">— seçilmedi —</option>
+                ${allPrompts.map((p) => `<option value="${escapeHtml(p.id)}">İterasyon ${p.iterationOrdinal} · ${escapeHtml((p.alternativeLabel || p.text || "Prompt").slice(0, 60))}</option>`).join("")}
+              </select>
+            </label>
+          </div>
+        ` : ""}
+        <footer>
+          <button type="button" class="ghost-button" data-action="cancel">İptal</button>
+          <button type="button" class="primary-button" data-action="ok">Devam</button>
+        </footer>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const radios = overlay.querySelectorAll('input[name="render-source"]');
+    const promptPick = overlay.querySelector(".render-source-prompt-pick");
+    radios.forEach((r) => r.addEventListener("change", () => {
+      if (promptPick) promptPick.hidden = r.value !== "ai-tool" || !r.checked;
+    }));
+    overlay.querySelector('[data-action="cancel"]').addEventListener("click", () => {
+      overlay.remove();
+      resolve({ kind: "self", sourcePromptId: "" });
+    });
+    overlay.querySelector('[data-action="ok"]').addEventListener("click", () => {
+      const selected = overlay.querySelector('input[name="render-source"]:checked')?.value || "self";
+      const promptId = selected === "ai-tool" ? (overlay.querySelector("#render-source-prompt-select")?.value || "") : "";
+      overlay.remove();
+      resolve({ kind: selected, sourcePromptId: promptId });
+    });
+  });
 }
 
 function handlePreviewDeletion(event) {
@@ -11083,6 +12330,9 @@ async function handleAnalyze() {
   try {
     const analysis = await analyzeUploadedImagesWithAI(appState.uploadedRenders, appState.uploadedPlan);
     appState.analysisSummary = analysis.summary;
+    // Faz 1: Iterasyon snapshot. İterasyon yoksa oluştur, varsa snapshot'ı tazele.
+    // Re-analiz aynı iterasyonda kalır (q12-a); pin'ler korunur (q5).
+    captureAnalysisSnapshotToCurrentIteration();
     appState.quantityTakeoff = normalizeQuantityTakeoffItems(
       applyVisionConfidenceGating(analysis.quantityTakeoff),
       analysis.recommendedScopeSelections,
@@ -12232,7 +13482,7 @@ function renderHubProjectHook(hubKey, options = {}) {
     <section class="hub-project-hook">
       <div class="hub-project-hook-head">
         <div>
-          <p class="section-kicker">Proje Kimligi</p>
+          <p class="section-kicker">Proje Kimliği</p>
           <h3 class="hub-project-hook-title">${escapeHtml(data.projectName || entry.title)}</h3>
         </div>
         <span class="badge neutral">${escapeHtml(options.badge || entry.title)}</span>
@@ -21205,12 +22455,12 @@ function isAnyApiKeyConfigured() {
 
 function getAiStatusMeta() {
   if (appState.apiSettings?.connectedOnce) {
-    return { label: "AI Bagli", badge: "success", detail: "Son AI istegi basariyla yanit verdi." };
+    return { label: "AI Bağlı", badge: "success", tone: "ok", detail: "Son AI isteği başarıyla yanıt verdi." };
   }
   if (isAnyApiKeyConfigured()) {
-    return { label: "API Ayarli", badge: "info", detail: "Anahtar girildi; ancak bu oturumda henuz basarili AI yaniti dogrulanmadi." };
+    return { label: "API Ayarlı", badge: "info", tone: "ok", detail: "Anahtar girildi; ancak bu oturumda henüz başarılı AI yanıtı doğrulanmadı." };
   }
-  return { label: "AI Gerekli", badge: "warning", detail: "API anahtari bulunmadigi icin AI akislari baslatilamaz." };
+  return { label: "AI Yapılandırılmadı", badge: "warning", tone: "warning", detail: "API anahtarı bulunmadığı için AI akışları başlatılamaz." };
 }
 
 function showAlert(message, type = "info") {

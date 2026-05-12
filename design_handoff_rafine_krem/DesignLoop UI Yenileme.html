@@ -1,0 +1,2681 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DesignLoop — UI Yenileme Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     SHARED SHELL — chrome around the mockup
+     ============================================================ */
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Manrope', system-ui, sans-serif;
+    background: #2a2825;
+    color: #15181b;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Variant switcher — sticky top */
+  .variant-bar {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; gap: 18px;
+    padding: 14px 28px;
+    background: linear-gradient(180deg, #1a1816, #221f1c);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    color: #e8e1d4;
+    font-size: 13px;
+  }
+  .variant-bar-brand {
+    font-family: 'Instrument Serif', serif;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+    color: #f3ead7;
+  }
+  .variant-bar-brand em {
+    font-style: italic;
+    color: #d2a464;
+    font-weight: 400;
+  }
+  .variant-bar-divider { width: 1px; height: 22px; background: rgba(255,255,255,0.14); }
+  .variant-segmented {
+    display: inline-flex;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 999px;
+    padding: 4px;
+    gap: 2px;
+  }
+  .variant-segmented button {
+    border: 0; background: transparent;
+    color: rgba(232,225,212,0.7);
+    padding: 8px 16px;
+    font: inherit;
+    font-weight: 600;
+    border-radius: 999px;
+    cursor: pointer;
+    letter-spacing: 0.01em;
+  }
+  .variant-segmented button:hover { color: #f3ead7; }
+  .variant-segmented button[aria-pressed="true"] {
+    background: #f3ead7; color: #1a1816;
+  }
+  .variant-bar-meta {
+    margin-left: auto;
+    display: flex; gap: 18px; align-items: center;
+    font-size: 12px;
+    color: rgba(232,225,212,0.55);
+  }
+  .variant-bar-meta a { color: rgba(232,225,212,0.85); text-decoration: none; }
+  .variant-bar-meta a:hover { color: #d2a464; }
+
+  /* Screen index — fixed left rail */
+  .screen-index {
+    position: fixed;
+    left: 18px; top: 90px;
+    width: 200px;
+    background: rgba(26,24,22,0.92);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px;
+    padding: 14px 12px;
+    z-index: 80;
+    color: #e8e1d4;
+    font-size: 12px;
+  }
+  .screen-index h4 {
+    margin: 4px 8px 10px;
+    font-family: 'Instrument Serif', serif;
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    color: #d2a464;
+  }
+  .screen-index ol { list-style: none; padding: 0; margin: 0; counter-reset: idx; }
+  .screen-index li { counter-increment: idx; }
+  .screen-index a {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 7px 8px;
+    border-radius: 8px;
+    color: rgba(232,225,212,0.78);
+    text-decoration: none;
+    transition: background 120ms;
+  }
+  .screen-index a::before {
+    content: counter(idx, decimal-leading-zero);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: rgba(232,225,212,0.45);
+    min-width: 18px;
+  }
+  .screen-index a:hover { background: rgba(255,255,255,0.06); color: #f3ead7; }
+
+  .canvas-wrap {
+    padding: 28px 28px 80px 240px;
+    min-height: 100vh;
+  }
+
+  .screen-card {
+    background: var(--bg);
+    border-radius: 22px;
+    overflow: hidden;
+    margin-bottom: 28px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.35), 0 4px 12px rgba(0,0,0,0.2);
+    color: var(--text);
+    font-family: var(--font-body);
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+  .screen-card-tag {
+    display: flex; align-items: baseline; gap: 16px;
+    padding: 12px 24px;
+    background: var(--tag-bg);
+    border-bottom: 1px solid var(--tag-border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--tag-text);
+  }
+  .screen-card-tag .tag-num {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .screen-card-tag .tag-meta {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: none;
+    letter-spacing: 0;
+    font-family: var(--font-body);
+  }
+
+  .screen-body { padding: 0; }
+
+  /* ============================================================
+     VARIANT A — REFINED CREAM (Safe / Polished)
+     A subtle, elevated reading of the existing language:
+       - paper background w/ noise
+       - serif display + sans body
+       - hairline borders, generous white space
+       - deep ink blue accent (instead of harsh #2667ff)
+       - status colors gentler / warmer
+     ============================================================ */
+  body.variant-a {
+    --bg: #f5f1e8;
+    --bg-paper: #fbf7ef;
+    --bg-elev: #ffffff;
+    --text: #1d1a16;
+    --text-soft: #4a443c;
+    --muted: #7a7468;
+    --hairline: rgba(29,26,22,0.10);
+    --hairline-strong: rgba(29,26,22,0.18);
+    --accent: #1c3d5a;
+    --accent-soft: rgba(28,61,90,0.08);
+    --warn: #b25c1a;
+    --warn-soft: rgba(178,92,26,0.12);
+    --good: #3f7a4f;
+    --good-soft: rgba(63,122,79,0.10);
+    --danger: #a8392c;
+    --font-display: 'Newsreader', 'Instrument Serif', serif;
+    --font-body: 'Manrope', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --radius: 16px;
+    --tag-bg: #ebe5d8;
+    --tag-border: rgba(29,26,22,0.08);
+    --tag-text: rgba(29,26,22,0.55);
+  }
+
+  /* ============================================================
+     VARIANT B — BOLD STUDIO (Confident / Architectural)
+       - ivory bg, sharp grid background
+       - heavy serif italic + mono numerals
+       - terracotta accent
+       - blueprint/grid undertone
+       - bigger contrast, rule-driven
+     ============================================================ */
+  body.variant-b {
+    --bg: #f6f3ea;
+    --bg-paper: #ffffff;
+    --bg-elev: #ffffff;
+    --bg-grid:
+      linear-gradient(rgba(29,26,22,0.035) 1px, transparent 1px) 0 0 / 56px 56px,
+      linear-gradient(90deg, rgba(29,26,22,0.035) 1px, transparent 1px) 0 0 / 56px 56px;
+    --text: #131110;
+    --text-soft: #3a3631;
+    --muted: #6e685e;
+    --hairline: rgba(19,17,16,0.12);
+    --hairline-strong: rgba(19,17,16,0.85);
+    --accent: #c14a26;
+    --accent-soft: rgba(193,74,38,0.12);
+    --warn: #b87a18;
+    --warn-soft: rgba(184,122,24,0.14);
+    --good: #2f6b46;
+    --good-soft: rgba(47,107,70,0.12);
+    --danger: #a8392c;
+    --font-display: 'Instrument Serif', 'Newsreader', serif;
+    --font-body: 'Manrope', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --radius: 4px;
+    --tag-bg: #131110;
+    --tag-border: rgba(19,17,16,0.85);
+    --tag-text: rgba(243,234,215,0.6);
+  }
+  body.variant-b .screen-card { background-image: var(--bg-grid); background-color: var(--bg); }
+
+  /* ============================================================
+     APP CHROME inside a screen-card
+     Header / nav / breadcrumb — designed to read at-a-glance
+     ============================================================ */
+  .app-header {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) auto;
+    gap: 28px;
+    align-items: end;
+    padding: 32px 36px 22px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  body.variant-b .app-header { border-bottom-color: var(--hairline-strong); }
+
+  .brand-stack { min-width: 0; }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 8px;
+  }
+  .brand-name {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 500;
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  body.variant-a .brand-name { font-size: 56px; }
+  body.variant-b .brand-name {
+    font-size: 64px;
+    font-style: italic;
+    font-weight: 400;
+  }
+  body.variant-b .brand-name em {
+    font-style: normal;
+    font-family: var(--font-body);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+  }
+  .brand-tagline {
+    margin: 12px 0 0;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .brand-tagline .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+    background: var(--bg-elev);
+    font-weight: 600;
+    color: var(--text-soft);
+  }
+  .brand-tagline .pill.is-live::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--good); box-shadow: 0 0 0 4px var(--good-soft);
+  }
+  body.variant-b .brand-tagline .pill { border-radius: 0; }
+
+  .header-action-cluster {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .ref-tile {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px 8px 8px;
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    background: var(--bg-elev);
+    color: var(--text-soft);
+    font-size: 12px;
+    max-width: 260px;
+  }
+  body.variant-b .ref-tile { border-radius: 0; }
+  .ref-thumb {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    background:
+      linear-gradient(135deg, #d4c8b0 0%, #a89878 100%);
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  body.variant-b .ref-thumb { border-radius: 0; }
+  .ref-thumb::after {
+    content:''; position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 30% 30%, rgba(255,255,255,0.4), transparent 60%),
+      linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.25));
+  }
+  .ref-tile-meta strong { display: block; font-size: 12px; color: var(--text); margin-bottom: 2px; }
+  .ref-tile-meta small { display: block; font-size: 10px; color: var(--muted); font-family: var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; }
+
+  /* Top nav */
+  .app-nav {
+    display: flex; align-items: center; gap: 6px;
+    padding: 14px 36px;
+    border-bottom: 1px solid var(--hairline);
+    background: var(--bg-paper);
+  }
+  body.variant-b .app-nav { background: transparent; border-bottom-color: var(--hairline-strong); }
+
+  .nav-back {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    border: 1px solid var(--hairline);
+    background: var(--bg-elev);
+    color: var(--text-soft);
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    margin-right: 12px;
+  }
+  body.variant-b .nav-back { border-radius: 0; }
+
+  .nav-pills {
+    display: inline-flex; gap: 4px;
+    padding: 4px;
+    background: var(--bg-elev);
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+  }
+  body.variant-b .nav-pills { border-radius: 0; padding: 0; gap: 0; background: transparent; border: 0; }
+
+  .nav-pill {
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-soft);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    font-family: var(--font-body);
+    display: inline-flex; align-items: center; gap: 8px;
+    position: relative;
+  }
+  .nav-pill .nav-num {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .nav-pill[aria-current="true"] {
+    background: var(--text);
+    color: var(--bg-paper);
+  }
+  .nav-pill[aria-current="true"] .nav-num { color: rgba(255,255,255,0.55); }
+  .nav-pill.is-locked { color: var(--muted); opacity: 0.55; }
+
+  body.variant-b .nav-pill {
+    border-radius: 0;
+    padding: 12px 18px;
+    border-bottom: 2px solid transparent;
+  }
+  body.variant-b .nav-pill[aria-current="true"] {
+    background: transparent;
+    color: var(--text);
+    border-bottom-color: var(--accent);
+  }
+  body.variant-b .nav-pill[aria-current="true"] .nav-num { color: var(--accent); }
+
+  .nav-spacer { flex: 1; }
+
+  .nav-icon-btn {
+    width: 38px; height: 38px;
+    display: inline-grid; place-items: center;
+    border: 1px solid var(--hairline);
+    background: var(--bg-elev);
+    border-radius: 999px;
+    color: var(--text-soft);
+    cursor: pointer;
+  }
+  body.variant-b .nav-icon-btn { border-radius: 0; }
+
+  .nav-cta {
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 1px solid var(--hairline);
+    background: var(--bg-elev);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-body);
+  }
+  .nav-cta.primary {
+    background: var(--text);
+    color: var(--bg-paper);
+    border-color: var(--text);
+  }
+  body.variant-b .nav-cta { border-radius: 0; }
+  body.variant-b .nav-cta.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* Breadcrumb */
+  .breadcrumb {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 36px 0;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+  .breadcrumb a { color: var(--muted); text-decoration: none; }
+  .breadcrumb .crumb-current { color: var(--text); font-weight: 600; }
+  .breadcrumb .crumb-sep { opacity: 0.4; }
+
+  /* Main pages container */
+  .page {
+    padding: 32px 36px 48px;
+  }
+  .section-heading {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 32px;
+    align-items: end;
+    margin-bottom: 28px;
+  }
+  .section-heading-meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 10px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-heading-meta::before {
+    content:''; width: 28px; height: 1px; background: var(--accent);
+  }
+  .section-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(36px, 4vw, 52px);
+    line-height: 1;
+    letter-spacing: -0.025em;
+    color: var(--text);
+    font-weight: 500;
+  }
+  body.variant-b .section-title { font-style: italic; font-weight: 400; }
+  .section-copy {
+    margin: 0;
+    color: var(--text-soft);
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 540px;
+    justify-self: end;
+  }
+
+  /* Panels */
+  .panel {
+    background: var(--bg-paper);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: 22px;
+  }
+  .panel-pad-lg { padding: 28px; }
+  body.variant-b .panel { background: var(--bg-paper); border-radius: 0; }
+
+  .panel-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .panel-head h3 {
+    margin: 0 0 4px;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 22px;
+    letter-spacing: -0.015em;
+    color: var(--text);
+  }
+  body.variant-b .panel-head h3 { font-style: italic; font-weight: 400; }
+  .panel-head p {
+    margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid var(--hairline);
+    background: var(--bg-elev);
+    color: var(--text);
+    padding: 10px 16px;
+    border-radius: 999px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: var(--text); color: var(--bg-paper); border-color: var(--text);
+  }
+  .btn-ghost { background: transparent; }
+  .btn-accent { background: var(--accent); color: #fff; border-color: var(--accent); }
+  body.variant-b .btn { border-radius: 0; }
+  body.variant-b .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* Chips & badges */
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--accent-soft);
+    color: var(--accent);
+    letter-spacing: 0.01em;
+  }
+  body.variant-b .chip { border-radius: 0; padding: 3px 8px; font-family: var(--font-mono); text-transform: uppercase; font-size: 10px; }
+  .chip.muted { background: rgba(29,26,22,0.06); color: var(--text-soft); }
+  .chip.good { background: var(--good-soft); color: var(--good); }
+  .chip.warn { background: var(--warn-soft); color: var(--warn); }
+
+  /* ============================================================
+     SCREEN BUILDERS
+     ============================================================ */
+
+  /* DASHBOARD */
+  .dash-toolbar {
+    display: flex; gap: 12px; align-items: center;
+    margin-bottom: 24px;
+    padding: 14px 18px;
+    background: var(--bg-paper);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+  }
+  body.variant-b .dash-toolbar { border-radius: 0; }
+  .dash-search {
+    flex: 1;
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px;
+    background: var(--bg-elev);
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  body.variant-b .dash-search { border-radius: 0; }
+
+  .dash-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0,1fr));
+    gap: 18px;
+  }
+  .proj-card {
+    padding: 22px;
+    background: var(--bg-paper);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    display: flex; flex-direction: column; gap: 14px;
+    min-height: 240px;
+    position: relative;
+    overflow: hidden;
+  }
+  body.variant-b .proj-card { border-radius: 0; }
+  .proj-card.featured {
+    background:
+      radial-gradient(circle at 0% 0%, var(--accent-soft), transparent 60%),
+      var(--bg-paper);
+    border-color: var(--accent);
+  }
+  body.variant-b .proj-card.featured { border-width: 1.5px; }
+  .proj-card-num {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .proj-card h4 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 26px;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    font-weight: 500;
+    color: var(--text);
+  }
+  body.variant-b .proj-card h4 { font-style: italic; font-weight: 400; }
+  .proj-card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .proj-meta-row {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-top: auto;
+    padding-top: 14px;
+    border-top: 1px dashed var(--hairline);
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+  .proj-meta-row > * + *::before {
+    content: '·'; margin-right: 8px; opacity: 0.5;
+  }
+
+  /* SETUP / KURULUM */
+  .setup-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 18px;
+  }
+  .upload-panel {
+    padding: 22px;
+    background: var(--bg-paper);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    display: grid; gap: 16px;
+  }
+  body.variant-b .upload-panel { border-radius: 0; }
+  .upload-step {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .upload-step-num {
+    width: 26px; height: 26px;
+    display: inline-grid; place-items: center;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  body.variant-b .upload-step-num { border-radius: 0; background: var(--text); }
+  .upload-step h3 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 22px;
+    letter-spacing: -0.015em;
+  }
+  body.variant-b .upload-step h3 { font-style: italic; font-weight: 400; }
+
+  .dropzone {
+    border: 1.5px dashed var(--hairline-strong);
+    border-radius: 12px;
+    padding: 36px 20px;
+    text-align: center;
+    background:
+      repeating-linear-gradient(45deg, transparent 0 12px, rgba(29,26,22,0.025) 12px 13px);
+    color: var(--text-soft);
+  }
+  body.variant-b .dropzone { border-radius: 0; }
+  .dropzone-icon {
+    width: 48px; height: 48px;
+    margin: 0 auto 12px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: grid; place-items: center;
+    font-size: 22px;
+  }
+  body.variant-b .dropzone-icon { border-radius: 0; }
+  .dropzone strong {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+  body.variant-b .dropzone strong { font-style: italic; font-weight: 400; }
+  .dropzone p { margin: 0; color: var(--muted); font-size: 13px; }
+
+  .file-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px;
+    background: var(--bg-elev);
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+  }
+  body.variant-b .file-row { border-radius: 0; }
+  .file-row-thumb {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, #c9b896, #8a7d65);
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+  body.variant-b .file-row-thumb { border-radius: 0; }
+  .file-row-meta { flex: 1; min-width: 0; }
+  .file-row-meta strong { display: block; font-size: 13px; }
+  .file-row-meta span { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+  .file-row-action {
+    color: var(--danger);
+    background: transparent; border: 0;
+    font-size: 11px; font-weight: 600;
+    cursor: pointer;
+  }
+
+  .setup-footer {
+    margin-top: 20px;
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 20px;
+    background: var(--bg-paper);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+  }
+  body.variant-b .setup-footer { border-radius: 0; }
+  .setup-footer p { margin: 0; flex: 1; color: var(--muted); font-size: 13px; }
+
+  /* ANALIZ + HUB CANVAS */
+  .analiz-stat-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .stat-tile {
+    padding: 18px 20px;
+    background: var(--bg-paper);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+  }
+  body.variant-b .stat-tile { border-radius: 0; }
+  .stat-tile small {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .stat-tile strong {
+    display: block;
+    margin-top: 8px;
+    font-family: var(--font-display);
+    font-size: 36px;
+    line-height: 1;
+    letter-spacing: -0.025em;
+    color: var(--text);
+    font-weight: 500;
+  }
+  body.variant-b .stat-tile strong { font-style: italic; font-weight: 400; }
+  .stat-tile span { font-size: 12px; color: var(--muted); display: block; margin-top: 6px; }
+
+  .hub-pill-row {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    margin-bottom: 18px;
+    padding: 10px 12px;
+    background: var(--bg-paper);
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+  }
+  body.variant-b .hub-pill-row { border-radius: 0; padding: 0; background: transparent; border: 0; gap: 0; border-bottom: 1px solid var(--hairline-strong); }
+  .hub-pill {
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: transparent; border: 0;
+    color: var(--text-soft);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-body);
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .hub-pill[aria-current="true"] {
+    background: var(--accent);
+    color: #fff;
+  }
+  body.variant-b .hub-pill { border-radius: 0; padding: 14px 18px; border-bottom: 2px solid transparent; }
+  body.variant-b .hub-pill[aria-current="true"] { background: transparent; color: var(--accent); border-bottom-color: var(--accent); }
+  .hub-pill-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor; opacity: 0.4;
+  }
+  .hub-pill[aria-current="true"] .hub-pill-dot { opacity: 1; }
+
+  .hub-shell {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 18px;
+    align-items: stretch;
+  }
+  .hub-canvas {
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: #1a1816;
+    position: relative;
+    min-height: 480px;
+  }
+  body.variant-b .hub-canvas { border-radius: 0; }
+  .hub-canvas-img {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 25% 30%, #d4b88c 0%, transparent 50%),
+      radial-gradient(ellipse at 75% 75%, #2c2825 0%, transparent 60%),
+      linear-gradient(140deg, #b09b78 0%, #6a5d48 50%, #2a2520 100%);
+  }
+  .hub-canvas-img::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.3) 100%);
+  }
+
+  /* Mock segmentation polygons */
+  .seg-overlay {
+    position: absolute; inset: 0;
+    pointer-events: none;
+  }
+  .seg-region {
+    position: absolute;
+    border: 1.5px solid rgba(193,74,38,0.7);
+    background: rgba(193,74,38,0.18);
+    backdrop-filter: blur(2px);
+    border-radius: 4px;
+  }
+  .seg-region.r1 { left: 8%; top: 6%; width: 84%; height: 22%; }
+  .seg-region.r2 { left: 6%; top: 70%; width: 88%; height: 24%; border-color: rgba(63,122,79,0.7); background: rgba(63,122,79,0.18); }
+  .seg-region.r3 { left: 50%; top: 30%; width: 38%; height: 38%; border-color: rgba(28,61,90,0.8); background: rgba(28,61,90,0.18); }
+  .seg-region.r4 { left: 8%; top: 32%; width: 28%; height: 36%; border-color: rgba(184,122,24,0.75); background: rgba(184,122,24,0.18); }
+  .seg-label {
+    position: absolute;
+    top: -22px; left: -1px;
+    padding: 2px 8px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-radius: 4px 4px 4px 0;
+    font-weight: 600;
+  }
+  .seg-region.r2 .seg-label { background: var(--good); }
+  .seg-region.r3 .seg-label { background: #1c3d5a; }
+  .seg-region.r4 .seg-label { background: var(--warn); }
+  body.variant-b .seg-label { border-radius: 0; }
+
+  .canvas-toolbar {
+    position: absolute;
+    top: 12px; right: 12px;
+    display: flex; gap: 6px;
+    background: rgba(26,24,22,0.85);
+    backdrop-filter: blur(12px);
+    padding: 4px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  body.variant-b .canvas-toolbar { border-radius: 0; }
+  .canvas-toolbar button {
+    background: transparent; border: 0;
+    color: rgba(243,234,215,0.8);
+    padding: 6px 12px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .canvas-toolbar button[aria-pressed="true"] {
+    background: #f3ead7; color: #1a1816;
+  }
+  body.variant-b .canvas-toolbar button { border-radius: 0; }
+
+  .canvas-meta {
+    position: absolute;
+    bottom: 12px; left: 12px; right: 12px;
+    display: flex; justify-content: space-between; align-items: center;
+    color: rgba(243,234,215,0.7);
+    font-size: 11px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .canvas-meta strong { color: #f3ead7; }
+
+  .hub-side {
+    display: flex; flex-direction: column; gap: 14px;
+  }
+
+  .selection-card {
+    padding: 18px 20px;
+    background: var(--bg-paper);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+  }
+  body.variant-b .selection-card { border-radius: 0; }
+  .selection-card .seg-color {
+    display: inline-block; width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-right: 8px;
+  }
+  body.variant-b .selection-card .seg-color { border-radius: 0; }
+  .selection-card h4 {
+    margin: 0 0 4px;
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+  }
+  body.variant-b .selection-card h4 { font-style: italic; font-weight: 400; }
+  .selection-card p { margin: 0; color: var(--muted); font-size: 13px; }
+
+  .hsl-block { margin-top: 16px; }
+  .hsl-row {
+    display: grid;
+    grid-template-columns: 14px 1fr 36px;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+  .hsl-row span:first-child { color: var(--muted); }
+  .hsl-row span:last-child { color: var(--text); text-align: right; }
+  .hsl-track {
+    position: relative;
+    height: 4px;
+    background: var(--hairline);
+    border-radius: 999px;
+  }
+  .hsl-track-fill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: var(--accent);
+    border-radius: 999px;
+  }
+  .hsl-track-knob {
+    position: absolute; top: 50%; transform: translate(-50%,-50%);
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--bg-elev);
+    border: 2px solid var(--accent);
+  }
+  body.variant-b .hsl-track, body.variant-b .hsl-track-fill, body.variant-b .hsl-track-knob { border-radius: 0; }
+
+  .palette-rec {
+    display: grid; gap: 10px;
+    margin-top: 16px;
+    padding: 14px;
+    border: 1px dashed var(--hairline-strong);
+    border-radius: 12px;
+    background: var(--bg-elev);
+  }
+  body.variant-b .palette-rec { border-radius: 0; }
+  .palette-rec h5 {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .palette-rec-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+  .palette-rec-card {
+    flex: 1 1 0; min-width: 0;
+    padding: 10px;
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    background: var(--bg-paper);
+    font-size: 11px;
+  }
+  body.variant-b .palette-rec-card { border-radius: 0; }
+  .palette-swatches {
+    display: flex; gap: 4px; margin-bottom: 8px;
+  }
+  .palette-swatch {
+    width: 16px; height: 16px; border-radius: 4px;
+    border: 1px solid var(--hairline);
+  }
+  body.variant-b .palette-swatch { border-radius: 0; }
+  .palette-rec-card strong { display: block; font-size: 12px; margin-bottom: 2px; }
+  .palette-rec-card small { color: var(--muted); font-size: 10px; }
+
+  .ai-suggestion {
+    padding: 14px 16px;
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text-soft);
+    font-style: italic;
+  }
+  body.variant-b .ai-suggestion { border-radius: 0; font-family: var(--font-display); font-size: 16px; }
+  .ai-suggestion::before {
+    content: 'AI · YORUM';
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    margin-bottom: 6px;
+    font-style: normal;
+  }
+
+  .decision-log {
+    padding: 18px 20px;
+    background: var(--bg-paper);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+  }
+  body.variant-b .decision-log { border-radius: 0; }
+  .decision-log h5 {
+    margin: 0 0 14px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .decision-item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--hairline);
+    font-size: 12px;
+  }
+  .decision-item:last-child { border-bottom: 0; }
+  .decision-time {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+  .decision-item strong { display: block; color: var(--text); margin-bottom: 2px; }
+  .decision-item span { color: var(--muted); }
+
+  /* BRIEF / TASARIM */
+  .brief-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+  .brief-field { display: grid; gap: 8px; }
+  .brief-field label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .chip-row {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .choice-chip {
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--hairline);
+    background: var(--bg-elev);
+    color: var(--text-soft);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .choice-chip[aria-pressed="true"] {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  body.variant-b .choice-chip { border-radius: 0; }
+
+  .slider-block {
+    padding: 18px;
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    background: var(--bg-elev);
+    margin-bottom: 14px;
+  }
+  body.variant-b .slider-block { border-radius: 0; }
+  .slider-block-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 12px;
+  }
+  .slider-block-head strong {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 17px;
+  }
+  body.variant-b .slider-block-head strong { font-style: italic; font-weight: 400; }
+  .slider-track-wrap { position: relative; height: 6px; background: var(--hairline); border-radius: 999px; margin: 18px 0 8px; }
+  .slider-track-fill { position: absolute; height: 100%; left: 30%; right: 30%; background: var(--accent); border-radius: 999px; }
+  .slider-knob {
+    position: absolute; top: 50%; transform: translate(-50%,-50%);
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--bg-elev);
+    border: 2px solid var(--accent);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+  }
+  body.variant-b .slider-track-wrap, body.variant-b .slider-track-fill, body.variant-b .slider-knob { border-radius: 0; }
+  .slider-labels {
+    display: flex; justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  .pool-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+  .pool-card {
+    padding: 14px;
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    background: var(--bg-elev);
+  }
+  body.variant-b .pool-card { border-radius: 0; }
+  .pool-card-head {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .pool-card-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  body.variant-b .pool-card-head .dot { border-radius: 0; }
+  .pool-card-title {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  body.variant-b .pool-card-title { font-style: italic; font-weight: 400; }
+  .pool-card p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  /* ÜRETIM (alternatives grid) */
+  .alt-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+  }
+  .alt-card {
+    background: var(--bg-paper);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  body.variant-b .alt-card { border-radius: 0; }
+  .alt-card-img {
+    aspect-ratio: 16/10;
+    background:
+      radial-gradient(ellipse at 30% 30%, #c9b896 0%, transparent 50%),
+      linear-gradient(140deg, #8a7d65 0%, #3a342b 100%);
+    position: relative;
+  }
+  .alt-card-img.alt2 {
+    background:
+      radial-gradient(ellipse at 70% 30%, #b09b78 0%, transparent 50%),
+      linear-gradient(140deg, #5a554d 0%, #d4b88c 100%);
+  }
+  .alt-card-img.alt3 {
+    background:
+      radial-gradient(ellipse at 50% 70%, #2c4858 0%, transparent 60%),
+      linear-gradient(140deg, #6a5d48 0%, #1a1816 100%);
+  }
+  .alt-card-img.alt4 {
+    background:
+      radial-gradient(ellipse at 30% 60%, #d97757 0%, transparent 50%),
+      linear-gradient(140deg, #2c2520 0%, #b09b78 100%);
+  }
+  .alt-card-tag {
+    position: absolute; top: 12px; left: 12px;
+    padding: 4px 10px;
+    background: rgba(26,24,22,0.85);
+    backdrop-filter: blur(8px);
+    color: #f3ead7;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-radius: 4px;
+  }
+  body.variant-b .alt-card-tag { border-radius: 0; }
+  .alt-card-cost {
+    position: absolute; bottom: 12px; right: 12px;
+    padding: 6px 12px;
+    background: rgba(243,234,215,0.95);
+    color: #1a1816;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border-radius: 4px;
+  }
+  body.variant-b .alt-card-cost { border-radius: 0; }
+  .alt-card-body { padding: 18px; }
+  .alt-card-body h4 {
+    margin: 0 0 4px;
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+  }
+  body.variant-b .alt-card-body h4 { font-style: italic; font-weight: 400; }
+  .alt-card-body p { margin: 0 0 14px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .alt-card-meta {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    padding-top: 12px;
+    border-top: 1px dashed var(--hairline);
+  }
+
+  /* RENDER */
+  .render-stack { display: grid; gap: 18px; }
+  .render-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    align-items: stretch;
+  }
+  .render-pair-card {
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    background: var(--bg-paper);
+    overflow: hidden;
+  }
+  body.variant-b .render-pair-card { border-radius: 0; }
+  .render-pair-card .alt-card-img { aspect-ratio: 4/3; }
+  .render-pair-meta {
+    padding: 14px 18px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .render-pair-meta strong {
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: -0.01em;
+  }
+  body.variant-b .render-pair-meta strong { font-style: italic; font-weight: 400; }
+
+  /* RAPOR */
+  .report-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 18px;
+    align-items: start;
+  }
+  .report-controls .panel { padding: 22px; }
+  .report-input-stack { display: grid; gap: 14px; }
+  .report-input-stack input,
+  .report-input-stack textarea {
+    width: 100%;
+    border: 1px solid var(--hairline);
+    background: var(--bg-elev);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 10px;
+    font: inherit;
+    font-size: 13px;
+    resize: none;
+  }
+  body.variant-b .report-input-stack input,
+  body.variant-b .report-input-stack textarea { border-radius: 0; }
+
+  .report-sheet {
+    background: var(--bg-elev);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: 40px 44px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.06);
+    min-height: 600px;
+  }
+  body.variant-b .report-sheet { border-radius: 0; }
+  .report-sheet-head {
+    border-bottom: 2px solid var(--text);
+    padding-bottom: 20px;
+    margin-bottom: 24px;
+  }
+  .report-sheet-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .report-sheet-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 38px;
+    font-weight: 500;
+    letter-spacing: -0.025em;
+    line-height: 1;
+  }
+  body.variant-b .report-sheet-title { font-style: italic; font-weight: 400; }
+  .report-sheet-meta {
+    display: flex; gap: 24px; margin-top: 14px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+  .report-sheet-meta strong { color: var(--text); }
+
+  .report-section {
+    margin-bottom: 32px;
+  }
+  .report-section h3 {
+    margin: 0 0 14px;
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  body.variant-b .report-section h3 { font-style: italic; font-weight: 400; }
+  .report-section h3::before {
+    content: attr(data-num);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    font-weight: 600;
+    font-style: normal;
+  }
+  .report-section p { margin: 0 0 10px; color: var(--text-soft); font-size: 13px; line-height: 1.7; }
+
+  .report-decision-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin-top: 14px;
+  }
+  .report-decision-card {
+    padding: 14px 16px;
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+  }
+  body.variant-b .report-decision-card { border-radius: 0; }
+  .report-decision-card h5 {
+    margin: 0 0 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .report-decision-card p { margin: 0; font-size: 12px; line-height: 1.5; }
+
+  .cost-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 14px;
+    font-size: 12px;
+  }
+  .cost-table th, .cost-table td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .cost-table th {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 2px solid var(--text);
+  }
+  .cost-table td.num { text-align: right; font-family: var(--font-mono); }
+  .cost-table tr.total td {
+    font-weight: 700;
+    border-top: 1px solid var(--text);
+    border-bottom: none;
+    padding-top: 14px;
+  }
+
+  /* MODAL */
+  .modal-shell {
+    background: rgba(20, 18, 16, 0.6);
+    backdrop-filter: blur(8px);
+    padding: 60px;
+    display: grid;
+    place-items: center;
+  }
+  .modal-dialog {
+    width: 100%;
+    max-width: 640px;
+    background: var(--bg-paper);
+    border-radius: 20px;
+    padding: 32px;
+    border: 1px solid var(--hairline);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+  }
+  body.variant-b .modal-dialog { border-radius: 0; }
+  .modal-head { margin-bottom: 22px; }
+  .modal-head h3 {
+    margin: 4px 0 0;
+    font-family: var(--font-display);
+    font-size: 30px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+  body.variant-b .modal-head h3 { font-style: italic; font-weight: 400; }
+  .modal-form { display: grid; gap: 14px; }
+  .modal-form input, .modal-form textarea {
+    width: 100%;
+    border: 1px solid var(--hairline);
+    background: var(--bg-elev);
+    padding: 12px 14px;
+    border-radius: 10px;
+    font: inherit;
+    font-size: 14px;
+  }
+  body.variant-b .modal-form input,
+  body.variant-b .modal-form textarea { border-radius: 0; }
+  .modal-actions {
+    display: flex; justify-content: flex-end; gap: 10px;
+    margin-top: 20px;
+  }
+
+  /* DRAWER (AI Settings) */
+  .drawer-shell {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    min-height: 540px;
+    position: relative;
+    background:
+      linear-gradient(120deg, var(--bg) 70%, transparent 70%);
+  }
+  .drawer-shell-fade {
+    background: rgba(20, 18, 16, 0.5);
+    backdrop-filter: blur(4px);
+  }
+  .drawer-pane {
+    background: var(--bg-paper);
+    border-left: 1px solid var(--hairline);
+    padding: 28px;
+    overflow-y: auto;
+  }
+  body.variant-b .drawer-pane { border-left-color: var(--hairline-strong); }
+  .drawer-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 22px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .drawer-head h3 {
+    margin: 4px 0 0;
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+  }
+  body.variant-b .drawer-head h3 { font-style: italic; font-weight: 400; }
+  .drawer-body { display: grid; gap: 14px; }
+  .drawer-body label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .drawer-body input {
+    width: 100%;
+    border: 1px solid var(--hairline);
+    background: var(--bg-elev);
+    padding: 10px 12px;
+    border-radius: 10px;
+    font: inherit;
+    font-size: 13px;
+  }
+  body.variant-b .drawer-body input { border-radius: 0; }
+  .drawer-info {
+    padding: 12px 14px;
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 10px;
+    font-size: 12px;
+    color: var(--text-soft);
+    line-height: 1.5;
+  }
+  body.variant-b .drawer-info { border-radius: 0; }
+
+  /* VARIANT B specific decorations */
+  body.variant-b .screen-card {
+    border: 1px solid var(--hairline-strong);
+  }
+  body.variant-b .panel,
+  body.variant-b .upload-panel,
+  body.variant-b .hub-canvas,
+  body.variant-b .stat-tile,
+  body.variant-b .selection-card,
+  body.variant-b .decision-log,
+  body.variant-b .alt-card,
+  body.variant-b .render-pair-card {
+    border-color: var(--hairline-strong);
+  }
+
+  /* small responsive tweak */
+  @media (max-width: 1100px) {
+    .canvas-wrap { padding-left: 28px; }
+    .screen-index { display: none; }
+  }
+</style>
+</head>
+<body class="variant-a" style="font-family: Manrope">
+
+<!-- ============================ TOP CONTROL BAR ============================ -->
+<div class="variant-bar">
+  <div class="variant-bar-brand">DesignLoop <em>UI</em></div>
+  <div class="variant-bar-divider"></div>
+  <div class="variant-segmented" role="tablist" aria-label="Tasarım varyantı">
+    <button id="btn-variant-a" aria-pressed="true">A · Rafine Krem</button>
+    <button id="btn-variant-b" aria-pressed="false">B · Stüdyo Bold</button>
+  </div>
+  <div class="variant-bar-meta">
+    <span id="active-meta">Açık tema · Mevcut yapı korunarak yenilendi</span>
+    <span>·</span>
+    <a href="#screen-1">↓ Tüm ekranlar</a>
+  </div>
+</div>
+
+<!-- ============================ SCREEN INDEX ============================ -->
+<aside class="screen-index" aria-label="Ekran rehberi">
+  <h4>Ekranlar</h4>
+  <ol>
+    <li><a href="#screen-1">Dashboard / Projelerim</a></li>
+    <li><a href="#screen-2">Step 1 — Kurulum</a></li>
+    <li><a href="#screen-3">Step 2 — Analiz + Hub</a></li>
+    <li><a href="#screen-4">Step 3 — Tasarım Briefi</a></li>
+    <li><a href="#screen-5">Üretim — Alternatifler</a></li>
+    <li><a href="#screen-6">Render</a></li>
+    <li><a href="#screen-7">Rapor / Sunum</a></li>
+    <li><a href="#screen-8">Modal · Yeni Proje</a></li>
+    <li><a href="#screen-9">Drawer · AI Ayarları</a></li>
+  </ol>
+</aside>
+
+<!-- ============================ CANVAS ============================ -->
+<div class="canvas-wrap">
+
+  <!-- =================================================================
+       SCREEN 1 — DASHBOARD / PROJELERIM
+       ================================================================= -->
+  <article class="screen-card" id="screen-1">
+    <div class="screen-card-tag">
+      <span class="tag-num">01</span>
+      <span>Dashboard · Projelerim</span>
+      <span class="tag-meta">Giriş ekranı — proje listesi & yeni proje aksiyonu</span>
+    </div>
+    <div class="screen-body">
+
+      <header class="app-header">
+        <div class="brand-stack">
+          <p class="eyebrow">AI Iterative Design Costing Prototype</p>
+          <h1 class="brand-name">DesignLoop</h1>
+          <p class="brand-tagline">
+            <span class="pill is-live">AI Bağlı</span>
+            <span class="pill">Vanilla SPA Demo</span>
+            <span>· v3 önizleme</span>
+          </p>
+        </div>
+        <div class="header-action-cluster">
+          <button class="nav-icon-btn" title="Ayarlar">⚙</button>
+          <button class="nav-cta">Maliyet Veritabanı</button>
+          <button class="nav-cta primary">+ Yeni Proje</button>
+        </div>
+      </header>
+
+      <div class="page">
+
+        <div class="section-heading">
+          <div>
+            <p class="section-heading-meta">Panel · Tüm projeler</p>
+            <h2 class="section-title">Projelerim</h2>
+          </div>
+          <p class="section-copy">Aktif çalışmalarınızın listesi. Bir projeye girdiğinizde mahaller ve hubların durumu görünür.</p>
+        </div>
+
+        <div class="dash-toolbar">
+          <div class="dash-search">
+            <span>⌕</span>
+            <span>Proje veya mahal ara</span>
+          </div>
+          <button class="btn">Tüm Durumlar ▾</button>
+          <button class="btn">Proje Tipi ▾</button>
+          <button class="btn">Son Etkinlik ▾</button>
+        </div>
+
+        <div class="dash-grid">
+          <div class="proj-card featured">
+            <span class="proj-card-num">P-001 · OFİS</span>
+            <h4>Lobby Redesign — ABC Holding</h4>
+            <p>Giriş + lobi yenilemesi. 4 hub aktif, 12 karar kayıtlı.</p>
+            <div class="proj-meta-row">
+              <span>3 mahal</span>
+              <span>renk · malzeme · ışık · mobilya</span>
+              <span>2 saat önce</span>
+            </div>
+          </div>
+          <div class="proj-card">
+            <span class="proj-card-num">P-002 · KONUT</span>
+            <h4>Kadıköy Daire Yenileme</h4>
+            <p>Salon ve mutfak için kontrollü yenileme briefi hazırlanıyor.</p>
+            <div class="proj-meta-row">
+              <span>2 mahal</span>
+              <span>brief tamamlandı</span>
+              <span>dün</span>
+            </div>
+          </div>
+          <div class="proj-card">
+            <span class="proj-card-num">P-003 · CAFE</span>
+            <h4>Cihangir Cafe Konsept</h4>
+            <p>Sıcak palet + akustik iyileştirme odaklı keşif.</p>
+            <div class="proj-meta-row">
+              <span>1 mahal</span>
+              <span>analiz yapıldı</span>
+              <span>3 gün önce</span>
+            </div>
+          </div>
+          <div class="proj-card">
+            <span class="proj-card-num">P-004 · OTEL</span>
+            <h4>Beşiktaş Boutique Otel</h4>
+            <p>Lobi + restaurant brief. Premium ton, üst segment bütçe.</p>
+            <div class="proj-meta-row">
+              <span>4 mahal</span>
+              <span>render aşaması</span>
+              <span>1 hafta önce</span>
+            </div>
+          </div>
+          <div class="proj-card">
+            <span class="proj-card-num">P-005 · OFİS</span>
+            <h4>Maslak Co-working Yenileme</h4>
+            <p>Kurumsal dili güçlendirme + akustik panel sistemi.</p>
+            <div class="proj-meta-row">
+              <span>5 mahal</span>
+              <span>rapor hazır</span>
+              <span>2 hafta önce</span>
+            </div>
+          </div>
+          <div class="proj-card">
+            <span class="proj-card-num">P-006 · PERAKENDE</span>
+            <h4>Nişantaşı Mağaza Konsept</h4>
+            <p>Aydınlatma vurgusu, premium malzeme dengesi.</p>
+            <div class="proj-meta-row">
+              <span>2 mahal</span>
+              <span>arşiv</span>
+              <span>1 ay önce</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </article>
+
+  <!-- =================================================================
+       SCREEN 2 — STEP 1 KURULUM (UPLOAD)
+       ================================================================= -->
+  <article class="screen-card" id="screen-2">
+    <div class="screen-card-tag">
+      <span class="tag-num">02</span>
+      <span>Step 1 · Kurulum — Plan + Render Yükleme</span>
+      <span class="tag-meta">Akış başı — kullanıcı dosya yüklüyor</span>
+    </div>
+    <div class="screen-body">
+
+      <header class="app-header">
+        <div class="brand-stack">
+          <p class="eyebrow">AI Iterative Design Costing Prototype</p>
+          <h1 class="brand-name">DesignLoop</h1>
+          <p class="brand-tagline">
+            <span class="pill is-live">AI Bağlı</span>
+            <span class="pill">Lobby Redesign · Ana Mahal</span>
+          </p>
+        </div>
+        <div class="header-action-cluster">
+          <div class="ref-tile">
+            <div class="ref-thumb"></div>
+            <div class="ref-tile-meta">
+              <strong>Referans render</strong>
+              <small>3 dosya · 1 referans</small>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <nav class="app-nav">
+        <button class="nav-back">← Proje Detayına Dön</button>
+        <div class="nav-pills">
+          <button class="nav-pill" aria-current="true"><span class="nav-num">01</span> Kurulum</button>
+          <button class="nav-pill"><span class="nav-num">02</span> Analiz</button>
+          <button class="nav-pill is-locked"><span class="nav-num">03</span> Brief</button>
+          <button class="nav-pill is-locked"><span class="nav-num">04</span> Üretim</button>
+          <button class="nav-pill is-locked"><span class="nav-num">05</span> Render</button>
+          <button class="nav-pill is-locked"><span class="nav-num">06</span> Rapor</button>
+        </div>
+        <div class="nav-spacer"></div>
+        <button class="nav-icon-btn" title="Ayarlar">⚙</button>
+        <button class="nav-cta">Proje Kimliği</button>
+        <button class="nav-cta primary">Analiz Et →</button>
+      </nav>
+
+      <div class="breadcrumb">
+        <a>Tüm Projeler</a>
+        <span class="crumb-sep">/</span>
+        <a>Lobby Redesign</a>
+        <span class="crumb-sep">/</span>
+        <span class="crumb-current">Ana Mahal</span>
+      </div>
+
+      <div class="page">
+
+        <div class="section-heading">
+          <div>
+            <p class="section-heading-meta">Step 01 · Kurulum</p>
+            <h2 class="section-title">Plan & Render</h2>
+          </div>
+          <p class="section-copy">Birden fazla render ve tek bir kat planı yükleyerek analiz akışına başlayın. Sistem AI ile metraj ve kapsam önerisi üretecek.</p>
+        </div>
+
+        <div class="setup-grid">
+          <article class="upload-panel">
+            <header class="upload-step">
+              <span class="upload-step-num">1</span>
+              <h3>Kat Planı</h3>
+              <span class="chip warn" style="margin-left:auto;">Zorunlu</span>
+            </header>
+            <p style="margin:0;color:var(--muted);font-size:13px;">Tek bir plan dosyası kullanılır. Görsel veya PDF olabilir.</p>
+            <div class="dropzone">
+              <div class="dropzone-icon">⌂</div>
+              <strong>Kat planını bırakın</strong>
+              <p>tek dosya kabul edilir · PDF, PNG, JPG</p>
+            </div>
+            <div class="file-row">
+              <div class="file-row-thumb"></div>
+              <div class="file-row-meta">
+                <strong>kat-plani-revize.pdf</strong>
+                <span>1.4 MB · az önce</span>
+              </div>
+              <button class="file-row-action">Kaldır</button>
+            </div>
+          </article>
+
+          <article class="upload-panel">
+            <header class="upload-step">
+              <span class="upload-step-num">2</span>
+              <h3>Render Yükleme</h3>
+              <span class="chip muted" style="margin-left:auto;">En az 1</span>
+            </header>
+            <p style="margin:0;color:var(--muted);font-size:13px;">Birden çok perspektif desteklenir. İç mekan açıları önerilir.</p>
+            <div class="dropzone">
+              <div class="dropzone-icon">+</div>
+              <strong>Render dosyalarını sürükleyin</strong>
+              <p>veya tıklayarak seçin · 3 dosya yüklendi</p>
+            </div>
+            <div class="file-row">
+              <div class="file-row-thumb"></div>
+              <div class="file-row-meta">
+                <strong>lobi-genel-acidan.jpg</strong>
+                <span>2.8 MB · referans</span>
+              </div>
+              <span class="chip">Referans</span>
+            </div>
+            <div class="file-row">
+              <div class="file-row-thumb" style="background:linear-gradient(135deg,#a89878,#5a4f3e)"></div>
+              <div class="file-row-meta">
+                <strong>lobi-resepsiyon.jpg</strong>
+                <span>2.2 MB · 1 dakika önce</span>
+              </div>
+              <button class="file-row-action">Kaldır</button>
+            </div>
+          </article>
+        </div>
+
+        <div class="setup-footer">
+          <p>Analiz öncesi en az 1 render ve 1 plan yüklenmelidir.</p>
+          <button class="btn">Sıfırdan Başla</button>
+          <button class="btn">MaterialID Sonrasını Test Et</button>
+          <button class="btn btn-primary">Analiz Et →</button>
+        </div>
+
+      </div>
+    </div>
+  </article>
+
+  <!-- =================================================================
+       SCREEN 3 — STEP 2 ANALIZ + HUB
+       ================================================================= -->
+  <article class="screen-card" id="screen-3">
+    <div class="screen-card-tag">
+      <span class="tag-num">03</span>
+      <span>Step 2 · Analiz + Hub Canvas</span>
+      <span class="tag-meta">Ekranın kalbi — segmentasyon + hub kararları</span>
+    </div>
+    <div class="screen-body">
+
+      <header class="app-header">
+        <div class="brand-stack">
+          <p class="eyebrow">AI Iterative Design Costing Prototype</p>
+          <h1 class="brand-name">DesignLoop</h1>
+          <p class="brand-tagline">
+            <span class="pill is-live">AI Bağlı</span>
+            <span class="pill">Lobby Redesign · Ana Mahal</span>
+          </p>
+        </div>
+        <div class="header-action-cluster">
+          <div class="ref-tile">
+            <div class="ref-thumb"></div>
+            <div class="ref-tile-meta">
+              <strong>Lobi · genel açı</strong>
+              <small>4 bölge tespit edildi</small>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <nav class="app-nav">
+        <button class="nav-back">← Proje Detayı</button>
+        <div class="nav-pills">
+          <button class="nav-pill"><span class="nav-num">01</span> Kurulum</button>
+          <button class="nav-pill" aria-current="true"><span class="nav-num">02</span> Analiz</button>
+          <button class="nav-pill"><span class="nav-num">03</span> Brief</button>
+          <button class="nav-pill"><span class="nav-num">04</span> Üretim</button>
+          <button class="nav-pill"><span class="nav-num">05</span> Render</button>
+          <button class="nav-pill"><span class="nav-num">06</span> Rapor</button>
+        </div>
+        <div class="nav-spacer"></div>
+        <button class="nav-icon-btn">⚙</button>
+        <button class="nav-cta">Proje Kimliği</button>
+        <button class="nav-cta primary">Alternatifleri Üret →</button>
+      </nav>
+
+      <div class="page">
+
+        <div class="section-heading">
+          <div>
+            <p class="section-heading-meta">Step 02 · Analiz</p>
+            <h2 class="section-title">Mekan Analizi <em style="font-style:italic;color:var(--muted);font-weight:400;font-size:0.6em;display:block;margin-top:6px;letter-spacing:0;">— hub bazında karar</em></h2>
+          </div>
+          <p class="section-copy">Tasarım değerlendirmesini inceleyin, hub bazında detaylı analiz yapın ve alternatifleri üretin.</p>
+        </div>
+
+        <div class="analiz-stat-strip">
+          <div class="stat-tile">
+            <small>Toplam Bölge</small>
+            <strong>4</strong>
+            <span>tavan, zemin, duvar, mobilya</span>
+          </div>
+          <div class="stat-tile">
+            <small>AI Güveni</small>
+            <strong>87<span style="font-size:0.55em;color:var(--muted)">%</span></strong>
+            <span>2 bölge yüksek, 2 orta</span>
+          </div>
+          <div class="stat-tile">
+            <small>Kararlar</small>
+            <strong>3<span style="font-size:0.55em;color:var(--muted)"> / 12</span></strong>
+            <span>renk + malzeme başladı</span>
+          </div>
+          <div class="stat-tile">
+            <small>Tahmini Etki</small>
+            <strong style="color:var(--accent)">+₺48k</strong>
+            <span>bütçe bandında</span>
+          </div>
+        </div>
+
+        <div class="hub-pill-row" role="tablist">
+          <button class="hub-pill" aria-current="true"><span class="hub-pill-dot"></span> Renk</button>
+          <button class="hub-pill"><span class="hub-pill-dot"></span> Malzeme</button>
+          <button class="hub-pill"><span class="hub-pill-dot"></span> Aydınlatma</button>
+          <button class="hub-pill"><span class="hub-pill-dot"></span> Mobilya</button>
+          <button class="hub-pill"><span class="hub-pill-dot"></span> Genel Değerlendirme</button>
+        </div>
+
+        <div class="hub-shell">
+          <div class="hub-canvas">
+            <div class="hub-canvas-img"></div>
+            <div class="seg-overlay">
+              <div class="seg-region r1"><span class="seg-label">Tavan</span></div>
+              <div class="seg-region r4"><span class="seg-label">Duvar · Sol</span></div>
+              <div class="seg-region r3"><span class="seg-label">Mobilya · Resepsiyon</span></div>
+              <div class="seg-region r2"><span class="seg-label">Zemin</span></div>
+            </div>
+            <div class="canvas-toolbar">
+              <button aria-pressed="true">SEG</button>
+              <button>SPLIT</button>
+              <button>ORİJİNAL</button>
+            </div>
+            <div class="canvas-meta">
+              <span>4 bölge · <strong>Tavan</strong> seçili</span>
+              <span>1920 × 1080 · referans</span>
+            </div>
+          </div>
+
+          <div class="hub-side">
+            <div class="selection-card">
+              <p style="margin:0 0 6px;font-family:var(--font-mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)"><span class="seg-color"></span>Seçili bölge</p>
+              <h4>Tavan · sıva boya, beyaz</h4>
+              <p>Tek katmanlı genel aydınlatma. Yüzey yumuşak, düz. AI önerisi: yarım ton krem yönüne kayma sıcaklık katar.</p>
+
+              <div class="hsl-block">
+                <div class="hsl-row">
+                  <span>H</span>
+                  <div class="hsl-track"><div class="hsl-track-fill" style="width:55%"></div><div class="hsl-track-knob" style="left:55%"></div></div>
+                  <span>+8°</span>
+                </div>
+                <div class="hsl-row">
+                  <span>S</span>
+                  <div class="hsl-track"><div class="hsl-track-fill" style="width:30%"></div><div class="hsl-track-knob" style="left:30%"></div></div>
+                  <span>+4%</span>
+                </div>
+                <div class="hsl-row">
+                  <span>L</span>
+                  <div class="hsl-track"><div class="hsl-track-fill" style="width:42%"></div><div class="hsl-track-knob" style="left:42%"></div></div>
+                  <span>−6%</span>
+                </div>
+              </div>
+
+              <div class="palette-rec">
+                <h5>AI Palet Önerileri</h5>
+                <div class="palette-rec-grid">
+                  <div class="palette-rec-card">
+                    <div class="palette-swatches">
+                      <span class="palette-swatch" style="background:#f0e8d8"></span>
+                      <span class="palette-swatch" style="background:#d4c2a3"></span>
+                      <span class="palette-swatch" style="background:#8a7d65"></span>
+                    </div>
+                    <strong>Sıcak nötr</strong>
+                    <small>krem · kil · cam göbeği</small>
+                  </div>
+                  <div class="palette-rec-card">
+                    <div class="palette-swatches">
+                      <span class="palette-swatch" style="background:#e8e8e0"></span>
+                      <span class="palette-swatch" style="background:#a8a89c"></span>
+                      <span class="palette-swatch" style="background:#3c3c3a"></span>
+                    </div>
+                    <strong>Soğuk kurumsal</strong>
+                    <small>buz · kömür · grafit</small>
+                  </div>
+                  <div class="palette-rec-card">
+                    <div class="palette-swatches">
+                      <span class="palette-swatch" style="background:#d8c4a4"></span>
+                      <span class="palette-swatch" style="background:#a06038"></span>
+                      <span class="palette-swatch" style="background:#3a2818"></span>
+                    </div>
+                    <strong>Doğal toprak</strong>
+                    <small>terra · kestane · espresso</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="ai-suggestion">
+              Tavanın beyazı odanın akışını kesiyor. 2 ton kreme kaydırmak duvardaki ahşap kaplamayla diyalog kurar; üstelik mevcut aydınlatmanın sıcak rengini bozmaz.
+            </div>
+
+            <div class="decision-log">
+              <h5>Karar Günlüğü</h5>
+              <div class="decision-item">
+                <span class="decision-time">14:32</span>
+                <div>
+                  <strong>Renk · Tavan</strong>
+                  <span>Krem yönüne kayma kabul edildi · +6° H</span>
+                </div>
+              </div>
+              <div class="decision-item">
+                <span class="decision-time">14:28</span>
+                <div>
+                  <strong>Malzeme · Zemin</strong>
+                  <span>Mevcut laminat → sert ahşap parke alternatifi · +₺18k</span>
+                </div>
+              </div>
+              <div class="decision-item">
+                <span class="decision-time">14:21</span>
+                <div>
+                  <strong>Renk · Duvar Sol</strong>
+                  <span>Mevcut korunsun · sadece kontrast notu eklendi</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </article>
+
+  <!-- =================================================================
+       SCREEN 4 — STEP 3 BRIEF
+       ================================================================= -->
+  <article class="screen-card" id="screen-4">
+    <div class="screen-card-tag">
+      <span class="tag-num">04</span>
+      <span>Step 3 · Tasarım Briefi</span>
+      <span class="tag-meta">Yaklaşım, problem, palet, atmosfer + bütçe</span>
+    </div>
+    <div class="screen-body">
+
+      <header class="app-header">
+        <div class="brand-stack">
+          <p class="eyebrow">AI Iterative Design Costing Prototype</p>
+          <h1 class="brand-name">DesignLoop</h1>
+          <p class="brand-tagline">
+            <span class="pill is-live">AI Bağlı</span>
+            <span class="pill">Lobby Redesign · Brief Hazırlığı</span>
+          </p>
+        </div>
+        <div class="header-action-cluster">
+          <button class="nav-icon-btn">⚙</button>
+          <button class="nav-cta">Proje Kimliği</button>
+          <button class="nav-cta primary">Alternatifleri Üret →</button>
+        </div>
+      </header>
+
+      <nav class="app-nav">
+        <button class="nav-back">← Analize Dön</button>
+        <div class="nav-pills">
+          <button class="nav-pill"><span class="nav-num">01</span> Kurulum</button>
+          <button class="nav-pill"><span class="nav-num">02</span> Analiz</button>
+          <button class="nav-pill" aria-current="true"><span class="nav-num">03</span> Brief</button>
+          <button class="nav-pill"><span class="nav-num">04</span> Üretim</button>
+          <button class="nav-pill"><span class="nav-num">05</span> Render</button>
+          <button class="nav-pill"><span class="nav-num">06</span> Rapor</button>
+        </div>
+      </nav>
+
+      <div class="page">
+        <div class="section-heading">
+          <div>
+            <p class="section-heading-meta">Step 03 · Brief</p>
+            <h2 class="section-title">Tasarım Briefi</h2>
+          </div>
+          <p class="section-copy">Üretim ve değerlendirme modüllerinden gelen karar havuzlarını burada sentezleyin, alternatif briefini oluşturun ve üretime gönderin.</p>
+        </div>
+
+        <div class="pool-grid">
+          <div class="pool-card">
+            <div class="pool-card-head"><span class="dot"></span>Renk Havuzu</div>
+            <div class="pool-card-title">3 karar</div>
+            <p>Tavan krem, duvar mevcut, vurgu duvar terracotta önerisi.</p>
+          </div>
+          <div class="pool-card">
+            <div class="pool-card-head"><span class="dot" style="background:var(--good)"></span>Malzeme Havuzu</div>
+            <div class="pool-card-title">5 karar</div>
+            <p>Zemin sert ahşap parke, tezgah doğal taş, akustik panel önerisi.</p>
+          </div>
+          <div class="pool-card">
+            <div class="pool-card-head"><span class="dot" style="background:var(--warn)"></span>Aydınlatma Havuzu</div>
+            <div class="pool-card-title">2 karar</div>
+            <p>3000K sıcak ton, 3 katmanlı çözüm: genel + görev + atmosfer.</p>
+          </div>
+        </div>
+
+        <article class="panel panel-pad-lg">
+          <div class="panel-head">
+            <div>
+              <h3>Brief Sentezi</h3>
+              <p>Renk, malzeme, ışık ve değerlendirme notlarını bir araya getirip alternatif üretimine gidecek brief'i burada netleştirin.</p>
+            </div>
+            <span class="chip">3 hub aktif</span>
+          </div>
+
+          <div class="brief-grid">
+            <div class="brief-field">
+              <label>Tasarım Yaklaşımı</label>
+              <div class="chip-row">
+                <button class="choice-chip" aria-pressed="true">Kontrollü Yenileme</button>
+                <button class="choice-chip">Premium Yorum</button>
+                <button class="choice-chip">Daha Çağdaş</button>
+                <button class="choice-chip">Akustik Odaklı</button>
+                <button class="choice-chip">Sıcak ve Davetkar</button>
+                <button class="choice-chip">Özel</button>
+              </div>
+            </div>
+            <div class="brief-field">
+              <label>Mekanın Öncelikli Problemi</label>
+              <div class="chip-row">
+                <button class="choice-chip">Fazla Sade</button>
+                <button class="choice-chip" aria-pressed="true">Akustik Zayıf</button>
+                <button class="choice-chip">Eski Görünüyor</button>
+                <button class="choice-chip">Kurumsal Dili Zayıf</button>
+                <button class="choice-chip">Tavan Çözümü</button>
+                <button class="choice-chip">Özel</button>
+              </div>
+            </div>
+            <div class="brief-field">
+              <label>Renk Yönü</label>
+              <div class="chip-row">
+                <button class="choice-chip" aria-pressed="true">Sıcak Nötr</button>
+                <button class="choice-chip">Açık Ahşap + Taş</button>
+                <button class="choice-chip">Yumuşak Bej-Gri</button>
+                <button class="choice-chip">Kurumsal Kontrast</button>
+                <button class="choice-chip">Bastırılmış Toprak</button>
+                <button class="choice-chip">Monokrom</button>
+              </div>
+            </div>
+            <div class="brief-field">
+              <label>Atmosfer Hedefi</label>
+              <div class="chip-row">
+                <button class="choice-chip">Sakin · Kurumsal</button>
+                <button class="choice-chip" aria-pressed="true">Sıcak · Davetkar</button>
+                <button class="choice-chip">Premium · Rafine</button>
+                <button class="choice-chip">Temiz · Teknik</button>
+                <button class="choice-chip">Yumuşak Hospitality</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="slider-block">
+            <div class="slider-block-head">
+              <strong>Hedef Bütçe</strong>
+              <span style="font-family:var(--font-mono);font-size:12px;color:var(--accent);">Standart → Dengeli</span>
+            </div>
+            <div class="slider-track-wrap">
+              <div class="slider-track-fill"></div>
+              <div class="slider-knob" style="left:30%"></div>
+              <div class="slider-knob" style="left:70%"></div>
+            </div>
+            <div class="slider-labels">
+              <span>Açık</span><span>Ekonomik</span><span>Standart</span><span>Dengeli</span><span>Üst Segment</span><span>Premium</span>
+            </div>
+          </div>
+
+          <div class="slider-block">
+            <div class="slider-block-head">
+              <strong>Müdahale Seviyesi</strong>
+              <span style="font-family:var(--font-mono);font-size:12px;color:var(--accent);">Kontrollü</span>
+            </div>
+            <div class="slider-track-wrap">
+              <div class="slider-track-fill" style="left:20%;right:60%"></div>
+              <div class="slider-knob" style="left:20%"></div>
+              <div class="slider-knob" style="left:40%"></div>
+            </div>
+            <div class="slider-labels">
+              <span>Yüzeysel</span><span>Kontrollü</span><span>Yarı Kapsamlı</span><span>Belirgin</span><span>Radikal</span>
+            </div>
+          </div>
+
+          <div class="slider-block">
+            <div class="slider-block-head">
+              <strong>Alternatif Sayısı</strong>
+              <span style="font-family:var(--font-mono);font-size:12px;color:var(--accent);">4 alternatif</span>
+            </div>
+            <div class="slider-track-wrap">
+              <div class="slider-track-fill" style="left:50%;right:50%"></div>
+              <div class="slider-knob" style="left:50%"></div>
+            </div>
+            <div class="slider-labels">
+              <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:18px;">
+            <button class="btn btn-ghost">+ Manuel Not Ekle</button>
+            <button class="btn btn-ghost">Gelişmiş Prompt</button>
+            <div style="flex:1"></div>
+            <button class="btn">Geri</button>
+            <button class="btn btn-primary">Alternatifleri Üret</button>
+          </div>
+        </article>
+      </div>
+    </div>
+  </article>
+
+  <!-- =================================================================
+       SCREEN 5 — ÜRETIM (Alternatives Grid)
+       ================================================================= -->
+  <article class="screen-card" id="screen-5">
+    <div class="screen-card-tag">
+      <span class="tag-num">05</span>
+      <span>Üretim · Alternatifler</span>
+      <span class="tag-meta">AI üretimi sonucu — alternatif kararları</span>
+    </div>
+    <div class="screen-body">
+
+      <header class="app-header">
+        <div class="brand-stack">
+          <p class="eyebrow">AI Iterative Design Costing Prototype</p>
+          <h1 class="brand-name">DesignLoop</h1>
+          <p class="brand-tagline">
+            <span class="pill is-live">AI Bağlı</span>
+            <span class="pill">4 alternatif üretildi</span>
+          </p>
+        </div>
+        <div class="header-action-cluster">
+          <button class="nav-icon-btn">⚙</button>
+          <button class="nav-cta">Bu Kararları Kaydet</button>
+          <button class="nav-cta primary">Render →</button>
+        </div>
+      </header>
+
+      <nav class="app-nav">
+        <button class="nav-back">← Brief'e Dön</button>
+        <div class="nav-pills">
+          <button class="nav-pill"><span class="nav-num">01</span> Kurulum</button>
+          <button class="nav-pill"><span class="nav-num">02</span> Analiz</button>
+          <button class="nav-pill"><span class="nav-num">03</span> Brief</button>
+          <button class="nav-pill" aria-current="true"><span class="nav-num">04</span> Üretim</button>
+          <button class="nav-pill"><span class="nav-num">05</span> Render</button>
+          <button class="nav-pill"><span class="nav-num">06</span> Rapor</button>
+        </div>
+      </nav>
+
+      <div class="page">
+        <div class="section-heading">
+          <div>
+            <p class="section-heading-meta">Step 04 · Üretim</p>
+            <h2 class="section-title">Alternatifler</h2>
+          </div>
+          <p class="section-copy">Havuzdan gelen kararlarla alternatifleri dağıtın, alternatif bazında görsel üretin ve rapora girecekleri sepete ekleyin.</p>
+        </div>
+
+        <div class="alt-grid">
+          <article class="alt-card">
+            <div class="alt-card-img">
+              <span class="alt-card-tag">A · Sıcak Nötr</span>
+              <span class="alt-card-cost">₺ 412.500</span>
+            </div>
+            <div class="alt-card-body">
+              <h4>Sıcak Nötr · Akustik Vurgu</h4>
+              <p>Krem tavan, ahşap parke, akustik panel duvar. Sıcak ışık katmanlı.</p>
+              <div class="alt-card-meta">
+                <span class="chip">Kontrollü</span>
+                <span class="chip muted">Standart bütçe</span>
+                <span class="chip good">+akustik</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="alt-card">
+            <div class="alt-card-img alt2">
+              <span class="alt-card-tag">B · Premium Yorum</span>
+              <span class="alt-card-cost">₺ 624.000</span>
+            </div>
+            <div class="alt-card-body">
+              <h4>Premium Yorum · Doğal Taş</h4>
+              <p>Travertin tezgah, doğal meşe, ipek perde. Üst segment, davetkar.</p>
+              <div class="alt-card-meta">
+                <span class="chip warn">Belirgin</span>
+                <span class="chip muted">Üst segment</span>
+                <span class="chip good">davetkar</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="alt-card">
+            <div class="alt-card-img alt3">
+              <span class="alt-card-tag">C · Daha Çağdaş</span>
+              <span class="alt-card-cost">₺ 498.000</span>
+            </div>
+            <div class="alt-card-body">
+              <h4>Çağdaş Yorum · Kontrast</h4>
+              <p>Koyu tavan, açık zemin, lineer LED kanalları, mat metal aksesuarlar.</p>
+              <div class="alt-card-meta">
+                <span class="chip warn">Belirgin</span>
+                <span class="chip muted">Dengeli</span>
+                <span class="chip">kontrast</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="alt-card">
+            <div class="alt-card-img alt4">
+              <span class="alt-card-tag">D · Sıcak + Davetkar</span>
+              <span class="alt-card-cost">₺ 386.000</span>
+            </div>
+            <div class="alt-card-body">
+              <h4>Sıcak ve Davetkar · Toprak Tonları</h4>
+              <p>Terracotta vurgu duvar, doğal jüt halı, gizli sıcak LED.</p>
+              <div class="alt-card-meta">
+                <span class="chip">Kontrollü</span>
+                <span class="chip muted">Ekonomik</span>
+                <span class="chip good">sıcak</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- =================================================================
+       SCREEN 6 — RENDER
+       ================================================================= -->
+  <article class="screen-card" id="screen-6">
+    <div class="screen-card-tag">
+      <span class="tag-num">06</span>
+      <span>Render · Karşılaştırma</span>
+      <span class="tag-meta">Mevcut + alternatif yan yana</span>
+    </div>
+    <div class="screen-body">
+
+      <header class="app-header">
+        <div class="brand-stack">
+          <p class="eyebrow">AI Iterative Design Costing Prototype</p>
+          <h1 class="brand-name">DesignLoop</h1>
+          <p class="brand-tagline">
+            <span class="pill is-live">AI Bağlı</span>
+            <span class="pill">Render aşaması</span>
+          </p>
+        </div>
+        <div class="header-action-cluster">
+          <button class="nav-icon-btn">⚙</button>
+          <button class="nav-cta">Görseli Yenile</button>
+          <button class="nav-cta primary">Maliyete Geç →</button>
+        </div>
+      </header>
+
+      <nav class="app-nav">
+        <button class="nav-back">← Üretime Dön</button>
+        <div class="nav-pills">
+          <button class="nav-pill"><span class="nav-num">01</span> Kurulum</button>
+          <button class="nav-pill"><span class="nav-num">02</span> Analiz</button>
+          <button class="nav-pill"><span class="nav-num">03</span> Brief</button>
+          <button class="nav-pill"><span class="nav-num">04</span> Üretim</button>
+          <button class="nav-pill" aria-current="true"><span class="nav-num">05</span> Render</button>
+          <button class="nav-pill"><span class="nav-num">06</span> Rapor</button>
+        </div>
+      </nav>
+
+      <div class="page">
+        <div class="section-heading">
+          <div>
+            <p class="section-heading-meta">Step 05 · Render</p>
+            <h2 class="section-title">Mevcut <em style="font-style:italic;color:var(--muted);font-weight:400;">vs.</em> Alternatif</h2>
+          </div>
+          <p class="section-copy">Seçilen alternatifler için görsel prompt üretin, placeholder görselleri yenileyin ve rapora eklenecek tasarımları netleştirin.</p>
+        </div>
+
+        <div class="render-stack">
+          <div class="render-row">
+            <div class="render-pair-card">
+              <div class="alt-card-img" style="aspect-ratio:4/3"><span class="alt-card-tag">Mevcut</span></div>
+              <div class="render-pair-meta">
+                <strong>Lobby — Mevcut Durum</strong>
+                <span>Referans</span>
+              </div>
+            </div>
+            <div class="render-pair-card">
+              <div class="alt-card-img alt2" style="aspect-ratio:4/3"><span class="alt-card-tag">A · Sıcak Nötr</span><span class="alt-card-cost">₺ 412.500</span></div>
+              <div class="render-pair-meta">
+                <strong>Sıcak Nötr · Akustik Vurgu</strong>
+                <span>Üretildi · 2 dk önce</span>
+              </div>
+            </div>
+          </div>
+          <div class="render-row">
+            <div class="render-pair-card">
+              <div class="alt-card-img alt3" style="aspect-ratio:4/3"><span class="alt-card-tag">B · Premium</span><span class="alt-card-cost">₺ 624.000</span></div>
+              <div class="render-pair-meta">
+                <strong>Premium Yorum · Doğal Taş</strong>
+                <span>Üretildi · 4 dk önce</span>
+              </div>
+            </div>
+            <div class="render-pair-card">
+              <div class="alt-card-img alt4" style="aspect-ratio:4/3"><span class="alt-card-tag">D · Sıcak/Davetkar</span><span class="alt-card-cost">₺ 386.000</span></div>
+              <div class="render-pair-meta">
+                <strong>Sıcak + Davetkar · Toprak</strong>
+                <span>Üretildi · 5 dk önce</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </article>
+
+  <!-- =================================================================
+       SCREEN 7 — RAPOR
+       ================================================================= -->
+  <article class="screen-card" id="screen-7">
+    <div class="screen-card-tag">
+      <span class="tag-num">07</span>
+      <span>Rapor · Sunum Hazırlığı</span>
+      <span class="tag-meta">Sol panel: workbench · Sağ: yayın provası</span>
+    </div>
+    <div class="screen-body">
+
+      <header class="app-header">
+        <div class="brand-stack">
+          <p class="eyebrow">AI Iterative Design Costing Prototype</p>
+          <h1 class="brand-name">DesignLoop</h1>
+          <p class="brand-tagline">
+            <span class="pill is-live">AI Bağlı</span>
+            <span class="pill">Lobby Redesign · Rapor</span>
+          </p>
+        </div>
+        <div class="header-action-cluster">
+          <button class="nav-icon-btn">⚙</button>
+          <button class="nav-cta">HTML İndir</button>
+          <button class="nav-cta primary">Sunumu Hazırla</button>
+        </div>
+      </header>
+
+      <nav class="app-nav">
+        <button class="nav-back">← Render'a Dön</button>
+        <div class="nav-pills">
+          <button class="nav-pill"><span class="nav-num">01</span> Kurulum</button>
+          <button class="nav-pill"><span class="nav-num">02</span> Analiz</button>
+          <button class="nav-pill"><span class="nav-num">03</span> Brief</button>
+          <button class="nav-pill"><span class="nav-num">04</span> Üretim</button>
+          <button class="nav-pill"><span class="nav-num">05</span> Render</button>
+          <button class="nav-pill" aria-current="true"><span class="nav-num">06</span> Rapor</button>
+        </div>
+      </nav>
+
+      <div class="page">
+        <div class="section-heading">
+          <div>
+            <p class="section-heading-meta">Step 06 · Rapor</p>
+            <h2 class="section-title">Sunum Workbench</h2>
+          </div>
+          <p class="section-copy">Render çıktılarını ve dışarıdan eklediğiniz referansları rapor havuzunda toplayın, prompt ile rafine edilmiş minimal bir rapor oluşturun.</p>
+        </div>
+
+        <div class="report-grid">
+          <aside class="report-controls">
+            <div class="panel">
+              <div class="panel-head">
+                <div>
+                  <h3>Workbench</h3>
+                  <p>Render havuzu, dışarıdan eklenen referanslar ve rapor notlarını burada toplayıp rafine edin.</p>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;">
+                <button class="btn btn-primary">Raporu AI ile Hazırla</button>
+                <button class="btn">HTML İndir</button>
+                <button class="btn">Sunumu Hazırla</button>
+              </div>
+              <div class="report-input-stack">
+                <div>
+                  <label style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;">Proje Başlığı</label>
+                  <input value="Lobby Redesign — ABC Holding" />
+                </div>
+                <div>
+                  <label style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;">Rapor Notu / Prompt Yönü</label>
+                  <textarea rows="4">Alternatifleri daha sakin, yönetsel ve karar odaklı bir dille yeniden yaz. Maliyet farklarını kısa ve net özetle.</textarea>
+                </div>
+                <div>
+                  <label style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;">Değerlendirme Notu</label>
+                  <textarea rows="3" placeholder="Ek karar notları..."></textarea>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <article class="report-sheet">
+            <header class="report-sheet-head">
+              <p class="report-sheet-eyebrow">Tasarım Sunumu · DesignLoop</p>
+              <h2 class="report-sheet-title">Lobby Redesign — ABC Holding</h2>
+              <div class="report-sheet-meta">
+                <span><strong>4</strong> alternatif</span>
+                <span><strong>3</strong> hub</span>
+                <span><strong>₺ 412.500</strong> önerilen</span>
+                <span>09 Mayıs 2026</span>
+              </div>
+            </header>
+
+            <section class="report-section">
+              <h3 data-num="§ 01">Mekan Değerlendirmesi</h3>
+              <p>Mevcut lobi alanı kurumsal bir ton hedeflese de tek katmanlı aydınlatma ve sade tavan çözümü mekanı kuru bırakıyor. Akustik yumuşatma eksik; resepsiyon mobilyası ölçek olarak büyük.</p>
+              <div class="report-decision-grid">
+                <div class="report-decision-card">
+                  <h5>Güçlü yön</h5>
+                  <p>Doğal ışık alımı yüksek, kat planı sirkülasyonu açık.</p>
+                </div>
+                <div class="report-decision-card">
+                  <h5>Zayıf yön</h5>
+                  <p>Akustik geri dönüş yüksek, ışık katmanı tek.</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="report-section">
+              <h3 data-num="§ 02">Önerilen Yön</h3>
+              <p>Sıcak nötr palette, akustik panel duvar ve 3 katmanlı sıcak ışık çözümü ile mekana karakterli bir yumuşaklık katılması öneriliyor. Bütçe bandı: <strong>standart → dengeli</strong>.</p>
+            </section>
+
+            <section class="report-section">
+              <h3 data-num="§ 03">Maliyet Özeti</h3>
+              <table class="cost-table">
+                <thead>
+                  <tr><th>Kalem</th><th>Birim</th><th class="num">Miktar</th><th class="num">Tutar</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Akustik panel duvar</td><td>m²</td><td class="num">42</td><td class="num">98.000</td></tr>
+                  <tr><td>Sert ahşap parke</td><td>m²</td><td class="num">86</td><td class="num">142.000</td></tr>
+                  <tr><td>Tavan boya · krem</td><td>m²</td><td class="num">74</td><td class="num">28.500</td></tr>
+                  <tr><td>3 katmanlı LED sistemi</td><td>set</td><td class="num">1</td><td class="num">96.000</td></tr>
+                  <tr><td>Yenileme işçiliği</td><td>götürü</td><td class="num">—</td><td class="num">48.000</td></tr>
+                  <tr class="total"><td colspan="3">Toplam (KDV hariç)</td><td class="num">₺ 412.500</td></tr>
+                </tbody>
+              </table>
+            </section>
+          </article>
+        </div>
+
+      </div>
+    </div>
+  </article>
+
+  <!-- =================================================================
+       SCREEN 8 — MODAL · YENI PROJE
+       ================================================================= -->
+  <article class="screen-card" id="screen-8">
+    <div class="screen-card-tag">
+      <span class="tag-num">08</span>
+      <span>Modal · Yeni Proje Oluştur</span>
+      <span class="tag-meta">Dashboard üstünden açılır</span>
+    </div>
+    <div class="screen-body">
+      <div class="modal-shell">
+        <div class="modal-dialog">
+          <div class="modal-head">
+            <p class="eyebrow">Yeni Proje</p>
+            <h3>Proje Oluştur</h3>
+          </div>
+          <form class="modal-form">
+            <div>
+              <label style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;">Proje Adı *</label>
+              <input value="Lobby Redesign · ABC Holding" />
+            </div>
+            <div>
+              <label style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;">Müşteri / Aidiyet</label>
+              <input placeholder="Örn. ABC Holding, Kişisel Proje" />
+            </div>
+            <div>
+              <label style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px;">Proje Tipi</label>
+              <div class="chip-row">
+                <button type="button" class="choice-chip" aria-pressed="true">Ofis</button>
+                <button type="button" class="choice-chip">Konut</button>
+                <button type="button" class="choice-chip">Cafe / Resto</button>
+                <button type="button" class="choice-chip">Otel / Hospitality</button>
+                <button type="button" class="choice-chip">Perakende</button>
+                <button type="button" class="choice-chip">Diğer</button>
+              </div>
+            </div>
+            <div>
+              <label style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;">Proje Notu (opsiyonel)</label>
+              <textarea rows="3" placeholder="Kurumsal ton, sabitler, konsept sınırları..."></textarea>
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="btn">Vazgeç</button>
+              <button type="button" class="btn btn-primary">Oluştur</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- =================================================================
+       SCREEN 9 — DRAWER · AI AYARLARI
+       ================================================================= -->
+  <article class="screen-card" id="screen-9">
+    <div class="screen-card-tag">
+      <span class="tag-num">09</span>
+      <span>Drawer · AI Ayarları</span>
+      <span class="tag-meta">Sağ panel — sayfanın üstüne kayar</span>
+    </div>
+    <div class="screen-body">
+      <div class="drawer-shell">
+        <div class="drawer-shell-fade" style="padding:32px;">
+          <div style="opacity:0.45;pointer-events:none;">
+            <div class="section-heading">
+              <div>
+                <p class="section-heading-meta">Step 02 · Analiz</p>
+                <h2 class="section-title">Mekan Analizi</h2>
+              </div>
+              <p class="section-copy">Drawer açıkken arka plan loşlaşır.</p>
+            </div>
+            <div class="analiz-stat-strip">
+              <div class="stat-tile"><small>Bölge</small><strong>4</strong></div>
+              <div class="stat-tile"><small>Güven</small><strong>87%</strong></div>
+              <div class="stat-tile"><small>Karar</small><strong>3/12</strong></div>
+              <div class="stat-tile"><small>Etki</small><strong>+₺48k</strong></div>
+            </div>
+          </div>
+        </div>
+        <aside class="drawer-pane">
+          <div class="drawer-head">
+            <div>
+              <p class="eyebrow">AI Ayarları</p>
+              <h3>Servis Bağlantıları</h3>
+            </div>
+            <button class="nav-icon-btn">×</button>
+          </div>
+          <div class="drawer-info">
+            <strong style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;display:block;margin-bottom:4px;color:var(--accent)">API Ready</strong>
+            Anahtar alanları front-end demoda localStorage içinde saklanır. Anahtar yoksa AI akışları başlatılmaz.
+          </div>
+          <div class="drawer-body">
+            <div>
+              <label>Gemini API Key</label>
+              <input type="password" placeholder="Tek anahtarla text, vision ve image akışlarını çalıştır" style="margin-top:6px;" value="••••••••••••••••••XK4r" />
+            </div>
+            <div>
+              <label>LLM Model</label>
+              <input style="margin-top:6px;" value="gemini-3-pro-preview" />
+            </div>
+            <div>
+              <label>Image Model</label>
+              <input style="margin-top:6px;" value="gemini-3-pro-image-preview" />
+            </div>
+            <div>
+              <label>Vision Model</label>
+              <input style="margin-top:6px;" value="gemini-3-flash-preview" />
+            </div>
+            <div>
+              <label>Hazır Profil</label>
+              <div class="chip-row" style="margin-top:6px;">
+                <button class="choice-chip" aria-pressed="true">Pahalı</button>
+                <button class="choice-chip">Ucuz</button>
+              </div>
+            </div>
+            <button class="btn btn-ghost" style="justify-self:start;">▾ İleri Seviye Anahtarlar</button>
+            <button class="btn btn-primary" style="margin-top:8px;">Ayarları Kaydet</button>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </article>
+
+</div>
+
+<script>
+  // Variant switcher
+  const btnA = document.getElementById('btn-variant-a');
+  const btnB = document.getElementById('btn-variant-b');
+  const meta = document.getElementById('active-meta');
+
+  function setVariant(v) {
+    document.body.classList.toggle('variant-a', v === 'a');
+    document.body.classList.toggle('variant-b', v === 'b');
+    btnA.setAttribute('aria-pressed', v === 'a');
+    btnB.setAttribute('aria-pressed', v === 'b');
+    meta.textContent = v === 'a'
+      ? 'A · Rafine krem — mevcut dilin temizlenmiş, editöryel hali'
+      : 'B · Stüdyo Bold — mimari grid, italik serif, terracotta aksent';
+    try { localStorage.setItem('dl-ui-variant', v); } catch(e) {}
+  }
+  btnA.addEventListener('click', () => setVariant('a'));
+  btnB.addEventListener('click', () => setVariant('b'));
+
+  // Restore last variant
+  try {
+    const saved = localStorage.getItem('dl-ui-variant');
+    if (saved === 'b') setVariant('b');
+  } catch(e) {}
+</script>
+
+</body>
+</html>
